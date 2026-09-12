@@ -1,4 +1,4 @@
-import { BarChart3, Dumbbell, History, Home, LogIn, ShieldPlus, User } from 'lucide-react'
+import { ArrowRight, BarChart3, Dumbbell, History, Home, ShieldPlus, User } from 'lucide-react'
 import { NavLink, Outlet, useLocation } from 'react-router-dom'
 import { useApp } from '../../state/AppContext'
 
@@ -31,7 +31,7 @@ export default function AppShell() {
       <div className="sidebar-card"><BarChart3 /><strong>Build your streak</strong><p>A focused 10-minute session today keeps your progress moving.</p><NavLink to="/practice/wat">Start quick WAT</NavLink></div>
     </aside>
     <main className="main-content">
-      {!isSession && <header className="topbar"><div><p>{greeting}</p><h1>{title}</h1></div><NavLink to="/profile" className="profile-chip"><span className="avatar">{initial}</span><span>{profile.name}</span></NavLink></header>}
+      {!isSession && <header className="topbar"><div><p>{greeting} · {new Date().toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric' })}</p><h1>{title}</h1></div><div className="topbar-actions"><NavLink to="/practice" className="header-practice">Start practice <ArrowRight/></NavLink><NavLink to="/profile" className="profile-chip"><span className="avatar">{initial}</span><span>{profile.name}</span></NavLink></div></header>}
       <Outlet />
     </main>
     <Navigation mobile />
