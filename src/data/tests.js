@@ -8,16 +8,9 @@ export const TESTS = [
   { id: 'sct', name: 'SCT', title: 'Sentence Completion Test', description: 'Complete unfinished sentences quickly with honest, constructive thoughts.', icon: ScanText, color: 'violet', duration: '4 min' },
 ]
 
-export const WAT_WORDS = ['Courage', 'Team', 'Failure', 'Duty', 'Change', 'Pressure', 'Leader', 'Risk', 'Service', 'Future']
-
 export const WRITING_PROMPTS = {
-  ppdt: 'A group discovers that their planned route has become unsafe shortly before an important journey. Write a story that explains the situation, the central character’s decision, and the outcome.',
-  tat: 'A young person stands outside a community hall after a difficult meeting. Write the story you imagine, including what led to this moment and what happens next.',
+  ppdt: 'Study the scene, identify the people and situation, then build a coherent story around the action you perceive.',
+  tat: 'Write the story you imagine from the scene, including what led to this moment, what the central character does, and what happens next.',
   sdt: 'Describe how your parents, teachers, friends, and you see your strengths and areas for growth.',
   sct: 'Complete this thought: When a difficult responsibility is given to me, I…',
 }
-
-export const INITIAL_HISTORY = [
-  { id: 'seed-1', type: 'PPDT', date: 'Today', duration: '04:30', score: 8.3, status: 'Completed' },
-  { id: 'seed-2', type: 'PPDT', date: '2 days ago', duration: '05:10', score: 1.1, status: 'Completed' },
-]

@@ -1,4 +1,4 @@
-import { ArrowRight, BarChart3, Dumbbell, History, Home, ShieldPlus, User } from 'lucide-react'
+import { ArrowRight, BarChart3, Dumbbell, History, Home, User } from 'lucide-react'
 import { NavLink, Outlet, useLocation } from 'react-router-dom'
 import { useApp } from '../../state/AppContext'
 
@@ -26,7 +26,7 @@ export default function AppShell() {
 
   return <div className="app-shell">
     <aside className="sidebar">
-      <NavLink to="/" className="brand"><span className="brand-mark"><ShieldPlus /></span><span>ISSB Prep</span></NavLink>
+      <NavLink to="/" className="brand"><span className="brand-mark logo"><img src="/app-logo.png" alt="ISSB Prep logo" /></span><span>ISSB Prep</span></NavLink>
       <p className="nav-label">Workspace</p><Navigation />
       <div className="sidebar-card"><BarChart3 /><strong>Build your streak</strong><p>A focused 10-minute session today keeps your progress moving.</p><NavLink to="/practice/wat">Start quick WAT</NavLink></div>
     </aside>
