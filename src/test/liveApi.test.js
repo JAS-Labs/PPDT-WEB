@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { API_BASE_URL, LIVE_API_URL, authApi, getAllHistory, practiceApi } from '../services/liveApi'
+import { API_BASE_URL, LIVE_API_URL, authApi, getAllHistory, practiceApi, analyticsApi, historyApi } from '../services/liveApi'
 
 const ok = (data = {}) => Promise.resolve({ ok: true, json: async () => data })
 
@@ -56,4 +56,85 @@ describe('production API contract', () => {
     await getAllHistory()
     expect(fetch.mock.calls.map(([url]) => url)).toEqual(['/api/v1/history', '/api/v1/wat/history', '/api/v1/tat/history', '/api/v1/sdt/history', '/api/v1/sct/history'])
   })
+
+  it('supports signup and logout contracts', async () => {
+    fetch.mockImplementationOnce(() => ok({ success: true, access_token: 'new-token' }))
+    await authApi.signup({ email: 'new@example.com', password: 'password123', age: 22, nationality: 'Bangladeshi', research_consent: true })
+    expect(fetch.mock.calls[0][0]).toBe('/api/v1/auth/signup')
+    expect(JSON.parse(fetch.mock.calls[0][1].body)).toMatchObject({ email: 'new@example.com', age: 22, nationality: 'Bangladeshi', research_consent: true })
+
+    fetch.mockImplementationOnce(() => ok({ success: true }))
+    await authApi.logout()
+    expect(fetch.mock.calls[1][0]).toBe('/api/v1/auth/logout')
+  })
+
+  it('supports analytics and history export contracts', async () => {
+    await analyticsApi.getOverallJudge(true)
+    expect(fetch.mock.calls[0][0]).toBe('/api/v1/analytics/overall-judge?re_evaluate=true')
+
+    await analyticsApi.getAverages(500)
+    expect(fetch.mock.calls[1][0]).toBe('/api/v1/analytics/averages?sample_size=500')
+
+    await analyticsApi.getPercentile(8.0, 'ppdt')
+    expect(fetch.mock.calls[2][0]).toBe('/api/v1/analytics/percentile?score=8&test_type=ppdt&sample_size=1000')
+
+    await historyApi.exportHistory()
+    expect(fetch.mock.calls[3][0]).toBe('/api/v1/history/export')
+  })
+
+  it('supports community responses contracts for PPDT and TAT', async () => {
+    await practiceApi.getImageResponses('img-123', 15)
+    expect(fetch.mock.calls[0][0]).toBe('/api/v1/images/img-123/responses?limit=15')
+
+    await practiceApi.getTatImageResponses('tat-456', 20)
+    expect(fetch.mock.calls[1][0]).toBe('/api/v1/tat/images/tat-456/responses?limit=20')
+  })
+
+  it('correctly maps FastAPI 422 validation error arrays to readable strings', async () => {
+    fetch.mockImplementationOnce(() => Promise.resolve({
+      ok: false,
+      status: 422,
+      json: async () => ({
+        detail: [
+          { loc: ['body', 'email'], msg: 'value is not a valid email address' },
+          { loc: ['body', 'password'], msg: 'ensure this value has at least 8 characters' }
+        ]
+      })
+    }))
+
+    await expect(authApi.login('bad-email', 'short')).rejects.toThrow(
+      'value is not a valid email address; ensure this value has at least 8 characters'
+    )
+  })
+
+  it('clears token and dispatches auth expired event on 401 Unauthorized', async () => {
+    const expiredListener = vi.fn()
+    window.addEventListener('issb-auth-expired', expiredListener)
+
+    fetch.mockImplementationOnce(() => Promise.resolve({
+      ok: false,
+      status: 401,
+      json: async () => ({ detail: 'Token has expired' })
+    }))
+
+    await expect(practiceApi.getPpdtImage()).rejects.toThrow('Token has expired')
+    expect(localStorage.getItem('issb-token')).toBeNull()
+    expect(expiredListener).toHaveBeenCalledOnce()
+    window.removeEventListener('issb-auth-expired', expiredListener)
+  })
+
+  it('passes difficulty and set query parameters for PPDT and TAT image queries', async () => {
+    await practiceApi.getPpdtImage('hard', 'A')
+    expect(fetch.mock.calls[0][0]).toBe('/api/v1/images/random?difficulty=hard&set=A')
+
+    await practiceApi.getPpdtImages({ difficulty: 'easy', set: 'B', limit: 5 })
+    expect(fetch.mock.calls[1][0]).toBe('/api/v1/images?difficulty=easy&set=B&limit=5')
+
+    await practiceApi.getTatImage('medium', 'C')
+    expect(fetch.mock.calls[2][0]).toBe('/api/v1/tat/images?count=1&difficulty=medium&set=C')
+
+    await practiceApi.getTatImages({ difficulty: 'hard', set: 'A', count: 4 })
+    expect(fetch.mock.calls[3][0]).toBe('/api/v1/tat/images?difficulty=hard&set=A&count=4')
+  })
 })
+
