@@ -163,7 +163,7 @@ export default function LoginPage({ initialMode }) {
     } catch (err) {
       let msg = err.message
       if (!msg || msg === 'Failed to fetch' || err.name === 'TypeError') {
-        msg = 'Unable to connect to the authentication server. The backend service may be waking up from idle (~25s on Azure Container Apps) or experiencing temporary network issues. Please wait a moment and try again.'
+        msg = 'Unable to connect to the authentication server. Please wait a moment and try again.'
       }
       setError(msg)
     } finally {
@@ -303,7 +303,7 @@ export default function LoginPage({ initialMode }) {
           {slowLoading && loading && (
             <div className="auth-status-hint" role="status">
               <LoaderCircle className="spin" size={16} />
-              <span>Connecting to live service (Azure Container may take ~20s to wake up if idle)…</span>
+              <span>Working, please wait… Loading…</span>
             </div>
           )}
 

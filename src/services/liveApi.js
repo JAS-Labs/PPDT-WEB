@@ -29,9 +29,7 @@ function handleFetchError(err, url) {
 
   const isDirectAzure = typeof url === 'string' && url.includes('azurecontainerapps.io')
   return new ApiNetworkError(
-    isDirectAzure
-      ? 'Unable to connect to the authentication server. The backend may be in cold standby (~25s wakeup) or experiencing CORS restrictions. Please wait a moment and try again.'
-      : 'Unable to connect to the authentication server. The backend may be waking up from idle or temporarily unreachable. Please wait a moment and try again.',
+    'Unable to connect to the authentication server. Please wait a moment and try again.',
     { isColdStart: true, isCors: isDirectAzure, originalError: err }
   )
 }
@@ -69,7 +67,7 @@ async function request(path, options = {}) {
   if (contentType.includes('text/html')) {
     if (response.status === 502 || response.status === 503 || response.status === 504) {
       const error = new Error(
-        `The service is temporarily unavailable or waking up (HTTP ${response.status}). Please wait a few seconds and try again.`
+        `The service is temporarily unavailable (HTTP ${response.status}). Please wait a few seconds and try again.`
       )
       error.status = response.status
       error.isColdStart = true
@@ -97,7 +95,7 @@ async function request(path, options = {}) {
     if (typeof message === 'string' && message.includes('Disallowed CORS origin')) {
       message = 'Cross-origin request blocked by the server. Please ensure requests are routed through the configured proxy or an allowed origin.'
     } else if (response.status === 502 || response.status === 503 || response.status === 504) {
-      message = 'The service is temporarily unavailable or waking up (HTTP ' + response.status + '). ' + (data.detail ? `(${data.detail}) ` : '') + 'Please wait a few seconds and try again.'
+      message = 'The service is temporarily unavailable (HTTP ' + response.status + '). ' + (data.detail ? `(${data.detail}) ` : '') + 'Please wait a few seconds and try again.'
     } else if (response.status === 429) {
       message = data.detail || 'Rate limit reached. Please wait a moment before trying again.'
     } else if (response.status === 404 && API_BASE_URL.startsWith('/')) {

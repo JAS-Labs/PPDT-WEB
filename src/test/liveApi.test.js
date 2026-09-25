@@ -153,14 +153,14 @@ describe('production API contract', () => {
       .rejects.toThrow(/Cross-origin request blocked by the server/i)
   })
 
-  it('handles 502/503/504 container waking up status gracefully', async () => {
+  it('handles 502/503/504 container status gracefully', async () => {
     fetch.mockImplementationOnce(() => Promise.resolve({
       ok: false,
       status: 503,
       json: async () => ({ detail: 'Service Unavailable' }),
     }))
     await expect(authApi.signup({ email: 'cand@test.com', password: 'password123', age: 21, nationality: 'Bangladeshi', research_consent: true }))
-      .rejects.toThrow(/The service is temporarily unavailable or waking up/i)
+      .rejects.toThrow(/The service is temporarily unavailable/i)
   })
 
   it('rejects with proxy diagnostic error when endpoint returns HTML document on 200/404', async () => {
@@ -176,7 +176,7 @@ describe('production API contract', () => {
       .rejects.toThrow(/The API endpoint returned an HTML document instead of an API response/i)
   })
 
-  it('treats 502/503/504 HTML error page as waking up rather than proxy configuration error', async () => {
+  it('treats 502/503/504 HTML error page as service unavailable rather than proxy configuration error', async () => {
     fetch.mockImplementationOnce(() => Promise.resolve({
       ok: false,
       status: 504,
@@ -186,7 +186,7 @@ describe('production API contract', () => {
       json: async () => { throw new Error('not json') },
     }))
     await expect(authApi.signup({ email: 'cand@test.com', password: 'password123', age: 21, nationality: 'Bangladeshi', research_consent: true }))
-      .rejects.toThrow(/The service is temporarily unavailable or waking up \(HTTP 504\)/i)
+      .rejects.toThrow(/The service is temporarily unavailable \(HTTP 504\)/i)
   })
 
   it('provides actionable diagnostic when API endpoint returns 404', async () => {
