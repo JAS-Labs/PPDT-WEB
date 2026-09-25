@@ -1,4 +1,4 @@
-import { cleanup, render, screen, waitFor } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { MemoryRouter } from 'react-router-dom'
@@ -363,6 +363,140 @@ describe('analytics and evaluation guide features', () => {
     const nationalityInput = screen.getByLabelText(/Nationality/i)
     expect(nationalityInput).toHaveValue('Bangladeshi')
     expect(screen.getByPlaceholderText('e.g. Bangladeshi')).toBeInTheDocument()
+  })
+
+  it('successfully registers candidate with age, nationality, consent and navigates to dashboard', async () => {
+    const user = userEvent.setup()
+    renderAt('/login', false)
+
+    await user.click(screen.getByRole('button', { name: /Create account/i }))
+
+    await user.type(screen.getByPlaceholderText('e.g. Ali Khan'), 'Tariq Rahman')
+    await user.type(screen.getByPlaceholderText('you@example.com'), 'tariq@example.com')
+    await user.type(screen.getByPlaceholderText('Min. 8 characters'), 'Password123!')
+
+    const submitBtn = screen.getByRole('button', { name: /Create account & start/i })
+    await user.click(submitBtn)
+
+    await waitFor(() => {
+      expect(authApi.signup).toHaveBeenCalledWith({
+        name: 'Tariq Rahman',
+        email: 'tariq@example.com',
+        password: 'Password123!',
+        age: 21,
+        nationality: 'Bangladeshi',
+        research_consent: true,
+      })
+    })
+
+    await waitFor(() => {
+      expect(screen.getByText('Your readiness')).toBeInTheDocument()
+    })
+  })
+
+  it('validates password length and age constraints before sending signup request', async () => {
+    const user = userEvent.setup()
+    renderAt('/login', false)
+
+    await user.click(screen.getByRole('button', { name: /Create account/i }))
+    await user.type(screen.getByPlaceholderText('e.g. Ali Khan'), 'Tariq Rahman')
+    await user.type(screen.getByPlaceholderText('you@example.com'), 'tariq@example.com')
+    await user.type(screen.getByPlaceholderText('Min. 8 characters'), '1234')
+
+    await user.click(screen.getByRole('button', { name: /Create account & start/i }))
+
+    expect(screen.getByRole('alert')).toHaveTextContent(/Password must be at least 8 characters long/i)
+    expect(authApi.signup).not.toHaveBeenCalled()
+  })
+
+  it('displays actionable diagnostic and retry button on registration network failure without raw Failed to fetch', async () => {
+    authApi.signup.mockRejectedValueOnce(new Error('Failed to fetch'))
+    const user = userEvent.setup()
+    renderAt('/login', false)
+
+    await user.click(screen.getByRole('button', { name: /Create account/i }))
+    await user.type(screen.getByPlaceholderText('e.g. Ali Khan'), 'Tariq Rahman')
+    await user.type(screen.getByPlaceholderText('you@example.com'), 'tariq@example.com')
+    await user.type(screen.getByPlaceholderText('Min. 8 characters'), 'Password123!')
+
+    await user.click(screen.getByRole('button', { name: /Create account & start/i }))
+
+    await waitFor(() => {
+      expect(screen.getByRole('alert')).toBeInTheDocument()
+    })
+
+    expect(screen.queryByText('Failed to fetch')).not.toBeInTheDocument()
+    expect(screen.getByText(/Unable to connect to the authentication server/i)).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /Try again/i })).toBeInTheDocument()
+  })
+
+  it('renders registration form directly when navigating to /signup', async () => {
+    renderAt('/signup', false)
+    expect(screen.getByRole('button', { name: /Create account & start/i })).toBeInTheDocument()
+    expect(screen.getByPlaceholderText('e.g. Ali Khan')).toBeInTheDocument()
+    expect(screen.getByPlaceholderText('e.g. Bangladeshi')).toBeInTheDocument()
+  })
+
+  it('validates maximum length bounds on candidate registration inputs', async () => {
+    const user = userEvent.setup()
+    renderAt('/signup', false)
+
+    const nameInput = screen.getByPlaceholderText('e.g. Ali Khan')
+    expect(nameInput).toHaveAttribute('maxlength', '100')
+    expect(screen.getByPlaceholderText('Min. 8 characters')).toHaveAttribute('maxlength', '128')
+    expect(screen.getByPlaceholderText('e.g. Bangladeshi')).toHaveAttribute('maxlength', '100')
+
+    fireEvent.change(nameInput, { target: { value: 'A'.repeat(101) } })
+    await user.type(screen.getByPlaceholderText('you@example.com'), 'valid@example.com')
+    await user.type(screen.getByPlaceholderText('Min. 8 characters'), 'Password123!')
+
+    await user.click(screen.getByRole('button', { name: /Create account & start/i }))
+
+    expect(screen.getByRole('alert')).toHaveTextContent(/Full name must be 100 characters or fewer/i)
+    expect(authApi.signup).not.toHaveBeenCalled()
+  })
+
+  it('preserves specific offline error message without overwriting with waking up text', async () => {
+    const offlineError = new Error('You are currently offline. Please check your internet connection and try again.')
+    offlineError.isNetworkError = true
+    authApi.signup.mockRejectedValueOnce(offlineError)
+
+    const user = userEvent.setup()
+    renderAt('/signup', false)
+
+    await user.type(screen.getByPlaceholderText('e.g. Ali Khan'), 'Tariq Rahman')
+    await user.type(screen.getByPlaceholderText('you@example.com'), 'tariq@example.com')
+    await user.type(screen.getByPlaceholderText('Min. 8 characters'), 'Password123!')
+
+    await user.click(screen.getByRole('button', { name: /Create account & start/i }))
+
+    await waitFor(() => {
+      expect(screen.getByRole('alert')).toHaveTextContent(/You are currently offline/i)
+    })
+    expect(screen.queryByText(/waking up from idle/i)).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /Try again/i })).toBeInTheDocument()
+  })
+
+  it('switches to signin mode with informative notice if signup returns no access_token', async () => {
+    authApi.signup.mockResolvedValueOnce({
+      success: true,
+      user: { name: 'Tariq Rahman', email: 'tariq@example.com' },
+      access_token: null,
+    })
+
+    const user = userEvent.setup()
+    renderAt('/signup', false)
+
+    await user.type(screen.getByPlaceholderText('e.g. Ali Khan'), 'Tariq Rahman')
+    await user.type(screen.getByPlaceholderText('you@example.com'), 'tariq@example.com')
+    await user.type(screen.getByPlaceholderText('Min. 8 characters'), 'Password123!')
+
+    await user.click(screen.getByRole('button', { name: /Create account & start/i }))
+
+    await waitFor(() => {
+      expect(screen.getByText(/Account created successfully! Please sign in/i)).toBeInTheDocument()
+    })
+    expect(screen.getByRole('button', { name: /Sign in to live practice/i })).toBeInTheDocument()
   })
 
   it('renders landing page with 5 core tests, OLQ rubrics, and action links', () => {

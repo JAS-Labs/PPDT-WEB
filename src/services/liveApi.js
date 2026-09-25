@@ -1,5 +1,40 @@
 const LIVE_API_URL = 'https://issb-ppdt-api.icyglacier-8bd82619.centralindia.azurecontainerapps.io/api/v1'
-export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || (import.meta.env.DEV ? '/api/v1' : LIVE_API_URL)
+
+// Default to '/api/v1' in development/tests and in browser deployments behind a reverse proxy (e.g. Vercel rewrites),
+// keeping API requests same-origin and preventing browser CORS restrictions.
+export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || (
+  (import.meta.env.DEV || typeof window !== 'undefined') ? '/api/v1' : LIVE_API_URL
+)
+
+export class ApiNetworkError extends Error {
+  constructor(message, details = {}) {
+    super(message)
+    this.name = 'ApiNetworkError'
+    this.isNetworkError = true
+    this.status = details.status || 0
+    this.isCors = details.isCors || false
+    this.isOffline = details.isOffline || false
+    this.isColdStart = details.isColdStart || false
+    this.originalError = details.originalError
+  }
+}
+
+function handleFetchError(err, url) {
+  if (typeof navigator !== 'undefined' && navigator.onLine === false) {
+    return new ApiNetworkError(
+      'You are currently offline. Please check your internet connection and try again.',
+      { isOffline: true, originalError: err }
+    )
+  }
+
+  const isDirectAzure = typeof url === 'string' && url.includes('azurecontainerapps.io')
+  return new ApiNetworkError(
+    isDirectAzure
+      ? 'Unable to connect to the authentication server. The backend may be in cold standby (~25s wakeup) or experiencing CORS restrictions. Please wait a moment and try again.'
+      : 'Unable to connect to the authentication server. The backend may be waking up from idle or temporarily unreachable. Please wait a moment and try again.',
+    { isColdStart: true, isCors: isDirectAzure, originalError: err }
+  )
+}
 
 function token() {
   const raw = localStorage.getItem('issb-token')
@@ -14,22 +49,61 @@ function token() {
 
 async function request(path, options = {}) {
   const authToken = token()
-  const response = await fetch(`${API_BASE_URL}${path}`, {
-    ...options,
-    headers: {
-      'Content-Type': 'application/json',
-      ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}),
-      ...options.headers,
-    },
-  })
+  const requestUrl = `${API_BASE_URL}${path}`
+  let response
+
+  try {
+    response = await fetch(requestUrl, {
+      ...options,
+      headers: {
+        'Content-Type': 'application/json',
+        ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}),
+        ...options.headers,
+      },
+    })
+  } catch (networkErr) {
+    throw handleFetchError(networkErr, requestUrl)
+  }
+
+  const contentType = response.headers?.get ? (response.headers.get('content-type') || '') : ''
+  if (contentType.includes('text/html')) {
+    if (response.status === 502 || response.status === 503 || response.status === 504) {
+      const error = new Error(
+        `The service is temporarily unavailable or waking up (HTTP ${response.status}). Please wait a few seconds and try again.`
+      )
+      error.status = response.status
+      error.isColdStart = true
+      throw error
+    }
+    const error = new Error(
+      'The API endpoint returned an HTML document instead of an API response. This indicates an unconfigured proxy or routing issue.'
+    )
+    error.status = response.status
+    error.isProxyError = true
+    throw error
+  }
+
   const data = await response.json().catch(() => ({}))
   if (!response.ok) {
     let message = data.detail || data.error || 'The live service could not complete this request.'
     if (Array.isArray(message)) {
-      message = message.map((item) => (typeof item === 'object' && item !== null ? item.msg || item.message || JSON.stringify(item) : String(item))).join('; ')
+      message = message
+        .map((item) => (typeof item === 'object' && item !== null ? item.msg || item.message || JSON.stringify(item) : String(item)))
+        .join('; ')
     } else if (typeof message === 'object' && message !== null) {
       message = message.message || message.detail || JSON.stringify(message)
     }
+
+    if (typeof message === 'string' && message.includes('Disallowed CORS origin')) {
+      message = 'Cross-origin request blocked by the server. Please ensure requests are routed through the configured proxy or an allowed origin.'
+    } else if (response.status === 502 || response.status === 503 || response.status === 504) {
+      message = 'The service is temporarily unavailable or waking up (HTTP ' + response.status + '). ' + (data.detail ? `(${data.detail}) ` : '') + 'Please wait a few seconds and try again.'
+    } else if (response.status === 429) {
+      message = data.detail || 'Rate limit reached. Please wait a moment before trying again.'
+    } else if (response.status === 404 && API_BASE_URL.startsWith('/')) {
+      message = 'The API endpoint was not found (HTTP 404). Please ensure the reverse proxy rewrite is configured on your web host.'
+    }
+
     if (response.status === 401 && typeof window !== 'undefined') {
       localStorage.removeItem('issb-token')
       window.dispatchEvent(new CustomEvent('issb-auth-expired', { detail: { path, status: 401 } }))

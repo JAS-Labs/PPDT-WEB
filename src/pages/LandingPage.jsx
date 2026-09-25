@@ -118,7 +118,7 @@ export default function LandingPage() {
                 <Link to="/login" className="landing-login-btn">
                   <LogIn size={16} /> Sign in
                 </Link>
-                <Link to="/login" className="landing-cta-btn">
+                <Link to="/signup" className="landing-cta-btn">
                   Get started <ArrowRight size={16} />
                 </Link>
               </>
@@ -390,7 +390,7 @@ export default function LandingPage() {
                 </Link>
               ) : (
                 <>
-                  <Link to="/login" state={{ from: '/practice' }} className="landing-primary-btn">
+                  <Link to="/signup" state={{ from: '/practice' }} className="landing-primary-btn">
                     Create Candidate Account <ArrowRight size={18} />
                   </Link>
                   <Link to="/login" state={{ from: '/practice' }} className="landing-secondary-btn light">
@@ -427,7 +427,7 @@ export default function LandingPage() {
               <b>Resources</b>
               <Link to={isAuthenticated ? '/guide' : '/login'} state={{ from: '/guide' }}>OLQ Evaluation Guide</Link>
               <Link to={isAuthenticated ? '/' : '/login'} state={{ from: '/' }}>Candidate Portal</Link>
-              {!isAuthenticated && <Link to="/login" state={{ from: '/' }}>Create Account</Link>}
+              {!isAuthenticated && <Link to="/signup" state={{ from: '/' }}>Create Account</Link>}
             </div>
           </div>
         </div>

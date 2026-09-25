@@ -27,6 +27,7 @@ export default function App() {
       <Routes>
         <Route path="/landing" element={<LandingPage />} />
         <Route path="/login" element={<LoginPage />} />
+        <Route path="/signup" element={<LoginPage initialMode="signup" />} />
 
         {/* Unauthenticated visitors see the Landing Page at root */}
         {!isAuthenticated && <Route path="/" element={<LandingPage />} />}

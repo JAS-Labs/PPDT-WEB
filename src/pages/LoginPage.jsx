@@ -4,7 +4,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { authApi } from '../services/liveApi'
 import { useApp } from '../state/AppContext'
 
-export default function LoginPage() {
+export default function LoginPage({ initialMode }) {
   const navigate = useNavigate()
   const location = useLocation()
   const { saveProfile, refreshHistory, setToken, isAuthenticated } = useApp()
@@ -15,7 +15,16 @@ export default function LoginPage() {
     }
   }, [isAuthenticated, location.state?.from, navigate])
 
-  const [mode, setMode] = useState('signin') // 'signin' | 'signup'
+  const [mode, setMode] = useState(() => {
+    if (
+      initialMode === 'signup' ||
+      location.pathname === '/signup' ||
+      location.state?.mode === 'signup'
+    ) {
+      return 'signup'
+    }
+    return 'signin'
+  })
   const [form, setForm] = useState({
     name: '',
     email: '',
@@ -26,51 +35,137 @@ export default function LoginPage() {
   })
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
+  const [slowLoading, setSlowLoading] = useState(false)
+
+  useEffect(() => {
+    let timer
+    if (loading) {
+      timer = setTimeout(() => {
+        setSlowLoading(true)
+      }, 2500)
+    } else {
+      setSlowLoading(false)
+    }
+    return () => clearTimeout(timer)
+  }, [loading])
 
   const submit = async (event) => {
-    event.preventDefault()
+    if (event) event.preventDefault()
     setLoading(true)
     setError('')
+
+    const email = form.email.trim()
+    const password = form.password
+
+    // Client-side validations
+    if (!email) {
+      setError('Please enter your email address.')
+      setLoading(false)
+      return
+    }
+    if (!email.includes('@') || !email.includes('.')) {
+      setError('Please enter a valid email address.')
+      setLoading(false)
+      return
+    }
+
     try {
       let result
       if (mode === 'signup') {
+        const name = form.name.trim()
+        if (!name) {
+          setError('Please enter your full name.')
+          setLoading(false)
+          return
+        }
+        if (name.length > 100) {
+          setError('Full name must be 100 characters or fewer.')
+          setLoading(false)
+          return
+        }
+        if (!password || password.length < 8) {
+          setError('Password must be at least 8 characters long.')
+          setLoading(false)
+          return
+        }
+        if (password.length > 128) {
+          setError('Password must be 128 characters or fewer.')
+          setLoading(false)
+          return
+        }
         const ageNum = parseInt(form.age, 10)
         if (isNaN(ageNum) || ageNum < 10 || ageNum > 100) {
-          throw new Error('Age must be between 10 and 100 years.')
+          setError('Age must be between 10 and 100 years.')
+          setLoading(false)
+          return
+        }
+        const nationality = form.nationality.trim()
+        if (!nationality || nationality.length < 2) {
+          setError('Nationality must be at least 2 characters.')
+          setLoading(false)
+          return
+        }
+        if (nationality.length > 100) {
+          setError('Nationality must be 100 characters or fewer.')
+          setLoading(false)
+          return
         }
         if (!form.research_consent) {
-          throw new Error('You must agree to the research use of your responses to register.')
+          setError('You must agree to the research use of your responses to register.')
+          setLoading(false)
+          return
         }
+
         result = await authApi.signup({
-          email: form.email.trim(),
-          password: form.password,
-          name: form.name.trim() || undefined,
+          email,
+          password,
+          name,
           age: ageNum,
-          nationality: form.nationality.trim(),
+          nationality,
           research_consent: Boolean(form.research_consent),
         })
       } else {
-        result = await authApi.login(form.email.trim(), form.password)
+        if (!password) {
+          setError('Please enter your password.')
+          setLoading(false)
+          return
+        }
+        result = await authApi.login(email, password)
       }
 
       if (result.access_token) {
         localStorage.setItem('issb-token', result.access_token)
         setToken(result.access_token)
+      } else {
+        setMode('signin')
+        setError('Account created successfully! Please sign in with your email and password.')
+        setLoading(false)
+        return
       }
 
       saveProfile({
-        name: result.user?.name || form.name.trim() || form.email.split('@')[0],
-        email: result.user?.email || form.email.trim(),
+        name: result.user?.name || form.name.trim() || email.split('@')[0],
+        email: result.user?.email || email,
         age: result.user?.age ?? (form.age ? parseInt(form.age, 10) : undefined),
-        nationality: result.user?.nationality || form.nationality || 'Bangladeshi',
+        nationality: result.user?.nationality || form.nationality.trim() || 'Bangladeshi',
         verified: true,
         mode: 'account',
       })
 
-      await refreshHistory()
+      try {
+        await refreshHistory()
+      } catch (histErr) {
+        // Initial history fetch failure on a fresh signup should not abort successful onboarding
+        console.warn('Initial history refresh skipped after onboarding:', histErr)
+      }
+
       navigate(location.state?.from || '/')
     } catch (err) {
-      setError(err.message || 'Authentication failed. Please check your details.')
+      let msg = err.message
+      if (!msg || msg === 'Failed to fetch' || err.name === 'TypeError') {
+        msg = 'Unable to connect to the authentication server. The backend service may be waking up from idle (~25s on Azure Container Apps) or experiencing temporary network issues. Please wait a moment and try again.'
+      }
+      setError(msg)
     } finally {
       setLoading(false)
     }
@@ -134,6 +229,7 @@ export default function LoginPage() {
                 value={form.name}
                 onChange={(e) => setForm({ ...form, name: e.target.value })}
                 placeholder="e.g. Ali Khan"
+                maxLength={100}
                 required
               />
             </label>
@@ -146,6 +242,7 @@ export default function LoginPage() {
               value={form.email}
               onChange={(e) => setForm({ ...form, email: e.target.value })}
               placeholder="you@example.com"
+              maxLength={254}
               required
             />
           </label>
@@ -158,6 +255,7 @@ export default function LoginPage() {
               onChange={(e) => setForm({ ...form, password: e.target.value })}
               placeholder={mode === 'signup' ? 'Min. 8 characters' : 'Your password'}
               minLength={mode === 'signup' ? 8 : 1}
+              maxLength={128}
               required
             />
           </label>
@@ -184,6 +282,7 @@ export default function LoginPage() {
                     value={form.nationality}
                     onChange={(e) => setForm({ ...form, nationality: e.target.value })}
                     placeholder="e.g. Bangladeshi"
+                    maxLength={100}
                     required
                   />
                 </label>
@@ -201,7 +300,37 @@ export default function LoginPage() {
             </>
           )}
 
-          {error && <p className="form-error" role="alert">{error}</p>}
+          {slowLoading && loading && (
+            <div className="auth-status-hint" role="status">
+              <LoaderCircle className="spin" size={16} />
+              <span>Connecting to live service (Azure Container may take ~20s to wake up if idle)…</span>
+            </div>
+          )}
+
+          {error && (
+            <div className="form-error" role="alert">
+              <p>{error}</p>
+              {(error.includes('waking up') ||
+                error.includes('offline') ||
+                error.includes('Unable to connect') ||
+                error.includes('temporarily unavailable') ||
+                error.includes('Cross-origin') ||
+                error.includes('proxy') ||
+                error.includes('routing') ||
+                error.includes('HTTP 5') ||
+                error.includes('timeout') ||
+                error.includes('network')) && (
+                <button
+                  type="button"
+                  className="retry-btn"
+                  onClick={() => submit()}
+                  disabled={loading}
+                >
+                  Try again
+                </button>
+              )}
+            </div>
+          )}
 
           <button className="primary-button" disabled={loading}>
             {loading ? (

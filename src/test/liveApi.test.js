@@ -136,5 +136,84 @@ describe('production API contract', () => {
     await practiceApi.getTatImages({ difficulty: 'hard', set: 'A', count: 4 })
     expect(fetch.mock.calls[3][0]).toBe('/api/v1/tat/images?difficulty=hard&set=A&count=4')
   })
+
+  it('converts network errors / Failed to fetch into actionable ApiNetworkError', async () => {
+    fetch.mockImplementationOnce(() => Promise.reject(new TypeError('Failed to fetch')))
+    await expect(authApi.signup({ email: 'cand@test.com', password: 'password123', age: 21, nationality: 'Bangladeshi', research_consent: true }))
+      .rejects.toThrow(/Unable to connect to the authentication server/i)
+  })
+
+  it('converts Disallowed CORS origin into actionable diagnostic error', async () => {
+    fetch.mockImplementationOnce(() => Promise.resolve({
+      ok: false,
+      status: 400,
+      json: async () => ({ detail: 'Disallowed CORS origin' }),
+    }))
+    await expect(authApi.signup({ email: 'cand@test.com', password: 'password123', age: 21, nationality: 'Bangladeshi', research_consent: true }))
+      .rejects.toThrow(/Cross-origin request blocked by the server/i)
+  })
+
+  it('handles 502/503/504 container waking up status gracefully', async () => {
+    fetch.mockImplementationOnce(() => Promise.resolve({
+      ok: false,
+      status: 503,
+      json: async () => ({ detail: 'Service Unavailable' }),
+    }))
+    await expect(authApi.signup({ email: 'cand@test.com', password: 'password123', age: 21, nationality: 'Bangladeshi', research_consent: true }))
+      .rejects.toThrow(/The service is temporarily unavailable or waking up/i)
+  })
+
+  it('rejects with proxy diagnostic error when endpoint returns HTML document on 200/404', async () => {
+    fetch.mockImplementationOnce(() => Promise.resolve({
+      ok: true,
+      status: 200,
+      headers: {
+        get: (h) => (h === 'content-type' ? 'text/html; charset=utf-8' : null),
+      },
+      json: async () => ({}),
+    }))
+    await expect(authApi.signup({ email: 'cand@test.com', password: 'password123', age: 21, nationality: 'Bangladeshi', research_consent: true }))
+      .rejects.toThrow(/The API endpoint returned an HTML document instead of an API response/i)
+  })
+
+  it('treats 502/503/504 HTML error page as waking up rather than proxy configuration error', async () => {
+    fetch.mockImplementationOnce(() => Promise.resolve({
+      ok: false,
+      status: 504,
+      headers: {
+        get: (h) => (h === 'content-type' ? 'text/html; charset=utf-8' : null),
+      },
+      json: async () => { throw new Error('not json') },
+    }))
+    await expect(authApi.signup({ email: 'cand@test.com', password: 'password123', age: 21, nationality: 'Bangladeshi', research_consent: true }))
+      .rejects.toThrow(/The service is temporarily unavailable or waking up \(HTTP 504\)/i)
+  })
+
+  it('provides actionable diagnostic when API endpoint returns 404', async () => {
+    fetch.mockImplementationOnce(() => Promise.resolve({
+      ok: false,
+      status: 404,
+      headers: {
+        get: (h) => (h === 'content-type' ? 'application/json' : null),
+      },
+      json: async () => ({ detail: 'Not Found' }),
+    }))
+    await expect(authApi.signup({ email: 'cand@test.com', password: 'password123', age: 21, nationality: 'Bangladeshi', research_consent: true }))
+      .rejects.toThrow(/The API endpoint was not found \(HTTP 404\)/i)
+  })
+
+  it('detects offline state and throws specific offline ApiNetworkError', async () => {
+    const originalOnLine = navigator.onLine
+    Object.defineProperty(navigator, 'onLine', { value: false, configurable: true })
+    fetch.mockImplementationOnce(() => Promise.reject(new TypeError('Failed to fetch')))
+
+    try {
+      await expect(authApi.signup({ email: 'cand@test.com', password: 'password123', age: 21, nationality: 'Bangladeshi', research_consent: true }))
+        .rejects.toThrow(/You are currently offline/i)
+    } finally {
+      Object.defineProperty(navigator, 'onLine', { value: originalOnLine, configurable: true })
+    }
+  })
 })
+
 
