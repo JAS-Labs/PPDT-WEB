@@ -356,8 +356,10 @@ describe('analytics and evaluation guide features', () => {
     // Click Create account
     await user.click(screen.getByRole('button', { name: /Create account/i }))
     expect(screen.getByRole('heading', { name: 'Create candidate account' })).toBeInTheDocument()
-    expect(screen.getByPlaceholderText('e.g. Ali Khan')).toBeInTheDocument()
+    expect(screen.getByPlaceholderText('e.g. Saifur Rahman')).toBeInTheDocument()
     expect(screen.getByLabelText(/I agree that my anonymized responses/i)).toBeChecked()
+    expect(screen.getByLabelText(/Full Name/i)).toHaveValue('')
+    expect(screen.getByLabelText(/I accept the Terms and Conditions/i)).not.toBeChecked()
 
     // Verify nationality defaults to Bangladeshi
     const nationalityInput = screen.getByLabelText(/Nationality/i)
@@ -370,8 +372,10 @@ describe('analytics and evaluation guide features', () => {
     renderAt('/login', false)
 
     await user.click(screen.getByRole('button', { name: /Create account/i }))
+    await user.clear(screen.getByLabelText(/Full Name/i))
+    await user.click(screen.getByLabelText(/I accept the Terms and Conditions/i))
 
-    await user.type(screen.getByPlaceholderText('e.g. Ali Khan'), 'Tariq Rahman')
+    await user.type(screen.getByPlaceholderText('e.g. Saifur Rahman'), 'Tariq Rahman')
     await user.type(screen.getByPlaceholderText('you@example.com'), 'tariq@example.com')
     await user.type(screen.getByPlaceholderText('Min. 8 characters'), 'Password123!')
 
@@ -399,7 +403,8 @@ describe('analytics and evaluation guide features', () => {
     renderAt('/login', false)
 
     await user.click(screen.getByRole('button', { name: /Create account/i }))
-    await user.type(screen.getByPlaceholderText('e.g. Ali Khan'), 'Tariq Rahman')
+    await user.click(screen.getByLabelText(/I accept the Terms and Conditions/i))
+    await user.type(screen.getByPlaceholderText('e.g. Saifur Rahman'), 'Tariq Rahman')
     await user.type(screen.getByPlaceholderText('you@example.com'), 'tariq@example.com')
     await user.type(screen.getByPlaceholderText('Min. 8 characters'), '1234')
 
@@ -415,7 +420,8 @@ describe('analytics and evaluation guide features', () => {
     renderAt('/login', false)
 
     await user.click(screen.getByRole('button', { name: /Create account/i }))
-    await user.type(screen.getByPlaceholderText('e.g. Ali Khan'), 'Tariq Rahman')
+    await user.click(screen.getByLabelText(/I accept the Terms and Conditions/i))
+    await user.type(screen.getByPlaceholderText('e.g. Saifur Rahman'), 'Tariq Rahman')
     await user.type(screen.getByPlaceholderText('you@example.com'), 'tariq@example.com')
     await user.type(screen.getByPlaceholderText('Min. 8 characters'), 'Password123!')
 
@@ -433,15 +439,16 @@ describe('analytics and evaluation guide features', () => {
   it('renders registration form directly when navigating to /signup', async () => {
     renderAt('/signup', false)
     expect(screen.getByRole('button', { name: /Create account & start/i })).toBeInTheDocument()
-    expect(screen.getByPlaceholderText('e.g. Ali Khan')).toBeInTheDocument()
+    expect(screen.getByPlaceholderText('e.g. Saifur Rahman')).toBeInTheDocument()
     expect(screen.getByPlaceholderText('e.g. Bangladeshi')).toBeInTheDocument()
   })
 
   it('validates maximum length bounds on candidate registration inputs', async () => {
     const user = userEvent.setup()
     renderAt('/signup', false)
+    await user.click(screen.getByLabelText(/I accept the Terms and Conditions/i))
 
-    const nameInput = screen.getByPlaceholderText('e.g. Ali Khan')
+    const nameInput = screen.getByPlaceholderText('e.g. Saifur Rahman')
     expect(nameInput).toHaveAttribute('maxlength', '100')
     expect(screen.getByPlaceholderText('Min. 8 characters')).toHaveAttribute('maxlength', '128')
     expect(screen.getByPlaceholderText('e.g. Bangladeshi')).toHaveAttribute('maxlength', '100')
@@ -463,8 +470,9 @@ describe('analytics and evaluation guide features', () => {
 
     const user = userEvent.setup()
     renderAt('/signup', false)
+    await user.click(screen.getByLabelText(/I accept the Terms and Conditions/i))
 
-    await user.type(screen.getByPlaceholderText('e.g. Ali Khan'), 'Tariq Rahman')
+    await user.type(screen.getByPlaceholderText('e.g. Saifur Rahman'), 'Tariq Rahman')
     await user.type(screen.getByPlaceholderText('you@example.com'), 'tariq@example.com')
     await user.type(screen.getByPlaceholderText('Min. 8 characters'), 'Password123!')
 
@@ -486,8 +494,9 @@ describe('analytics and evaluation guide features', () => {
 
     const user = userEvent.setup()
     renderAt('/signup', false)
+    await user.click(screen.getByLabelText(/I accept the Terms and Conditions/i))
 
-    await user.type(screen.getByPlaceholderText('e.g. Ali Khan'), 'Tariq Rahman')
+    await user.type(screen.getByPlaceholderText('e.g. Saifur Rahman'), 'Tariq Rahman')
     await user.type(screen.getByPlaceholderText('you@example.com'), 'tariq@example.com')
     await user.type(screen.getByPlaceholderText('Min. 8 characters'), 'Password123!')
 
@@ -497,6 +506,19 @@ describe('analytics and evaluation guide features', () => {
       expect(screen.getByText(/Account created successfully! Please sign in/i)).toBeInTheDocument()
     })
     expect(screen.getByRole('button', { name: /Sign in to live practice/i })).toBeInTheDocument()
+  })
+
+  it('requires separate terms acceptance before registering', async () => {
+    const user = userEvent.setup()
+    renderAt('/signup', false)
+    await user.type(screen.getByLabelText(/Full Name/i), 'Tariq Rahman')
+    await user.type(screen.getByPlaceholderText('you@example.com'), 'valid@example.com')
+    await user.type(screen.getByPlaceholderText('Min. 8 characters'), 'Password123!')
+    await user.click(screen.getByRole('button', { name: /Create account & start/i }))
+    expect(authApi.signup).not.toHaveBeenCalled()
+    expect(screen.getByLabelText(/I accept the Terms and Conditions/i)).toBeInvalid()
+    fireEvent.submit(screen.getByRole('button', { name: /Create account & start/i }).closest('form'))
+    expect(screen.getByRole('alert')).toHaveTextContent(/Please accept the Terms and Conditions/i)
   })
 
   it('renders landing page with 5 core tests, OLQ rubrics, and action links', () => {

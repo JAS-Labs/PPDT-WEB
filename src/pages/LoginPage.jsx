@@ -1,8 +1,9 @@
-import { ArrowLeft, CheckSquare, LoaderCircle, UserPlus, LogIn } from 'lucide-react'
+import { ArrowLeft, BookOpen, Clock3, TrendingUp, LoaderCircle, UserPlus, LogIn } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { authApi } from '../services/liveApi'
 import { useApp } from '../state/AppContext'
+import './auth.css'
 
 export default function LoginPage({ initialMode }) {
   const navigate = useNavigate()
@@ -34,6 +35,7 @@ export default function LoginPage({ initialMode }) {
     research_consent: true,
   })
   const [error, setError] = useState('')
+  const [termsAccepted, setTermsAccepted] = useState(false)
   const [loading, setLoading] = useState(false)
   const [slowLoading, setSlowLoading] = useState(false)
 
@@ -115,6 +117,11 @@ export default function LoginPage({ initialMode }) {
           setLoading(false)
           return
         }
+        if (!termsAccepted) {
+          setError('Please accept the Terms and Conditions to create your account.')
+          setLoading(false)
+          return
+        }
 
         result = await authApi.signup({
           email,
@@ -144,7 +151,7 @@ export default function LoginPage({ initialMode }) {
       }
 
       saveProfile({
-        name: result.user?.name || form.name.trim() || email.split('@')[0],
+        name: result.user?.name || (mode === 'signup' ? form.name.trim() : '') || email.split('@')[0],
         email: result.user?.email || email,
         age: result.user?.age ?? (form.age ? parseInt(form.age, 10) : undefined),
         nationality: result.user?.nationality || form.nationality.trim() || 'Bangladeshi',
@@ -172,28 +179,30 @@ export default function LoginPage({ initialMode }) {
   }
 
   return (
-    <main className="auth-page">
-      <section className="auth-brand">
-        <span className="brand-mark logo">
-          <img src="/app-logo.png" alt="ISSB Prep logo" />
-        </span>
-        <div>
-          <p>ISSB Prep</p>
-          <h1>Practice with focus.<br />Review with clarity.</h1>
-          <span>PPDT · WAT · TAT · SDT · SCT</span>
-        </div>
-      </section>
-
-      <section className="auth-form-wrap">
-        <Link to="/" className="back-link">
-          <ArrowLeft size={16} /> Back to home
-        </Link>
-
+    <main className="auth-page auth-refresh">
+      <header className="auth-topbar">
+        <Link to="/" className="auth-logo"><img src="/app-logo.png" alt="" />ISSB Prep</Link>
+        <Link to="/" className="back-link"><ArrowLeft size={16} /> Back to home</Link>
+      </header>
+      <div className="auth-content">
+        <section className="auth-brand">
+          <p className="auth-kicker">YOUR PRACTICE STARTS HERE</p>
+          <h1>Practice with focus.<br /><span>Review with clarity.</span></h1>
+          <p className="auth-description">A quiet space to prepare, understand your responses, and make your next session count.</p>
+          <ul className="auth-benefits">
+            <li><Clock3 />Timed practice across five test formats</li>
+            <li><BookOpen />Personal feedback you can learn from</li>
+            <li><TrendingUp />Your progress, together in one place</li>
+          </ul>
+        </section>
+        <section className="auth-form-wrap" aria-label={mode === 'signin' ? 'Sign-in form' : 'Registration form'}>
         <form className="auth-form" onSubmit={submit}>
           <div className="auth-mode-switch">
             <button
               type="button"
               className={`mode-btn ${mode === 'signin' ? 'active' : ''}`}
+              aria-pressed={mode === 'signin'}
+              disabled={loading}
               onClick={() => { setMode('signin'); setError(''); }}
             >
               <LogIn size={15} /> Sign in
@@ -201,15 +210,13 @@ export default function LoginPage({ initialMode }) {
             <button
               type="button"
               className={`mode-btn ${mode === 'signup' ? 'active' : ''}`}
+              aria-pressed={mode === 'signup'}
+              disabled={loading}
               onClick={() => { setMode('signup'); setError(''); }}
             >
               <UserPlus size={15} /> Create account
             </button>
           </div>
-
-          <p className="eyebrow">
-            {mode === 'signin' ? 'Live account required' : 'Candidate Registration'}
-          </p>
 
           <h2>
             {mode === 'signin' ? 'Sign in to continue' : 'Create candidate account'}
@@ -217,8 +224,8 @@ export default function LoginPage({ initialMode }) {
 
           <p className="auth-intro">
             {mode === 'signin'
-              ? 'Every practice test loads its active item set from the live service and submits to the AI evaluation API.'
-              : 'Register to synchronize test history, unlock cumulative psychological profiles, and benchmark your progress.'}
+              ? 'Pick up your practice and review your progress.'
+              : 'Create your profile to save sessions and learn from your feedback.'}
           </p>
 
           {mode === 'signup' && (
@@ -226,9 +233,10 @@ export default function LoginPage({ initialMode }) {
               Full Name
               <input
                 type="text"
+                autoComplete="name"
                 value={form.name}
                 onChange={(e) => setForm({ ...form, name: e.target.value })}
-                placeholder="e.g. Ali Khan"
+                placeholder="e.g. Saifur Rahman"
                 maxLength={100}
                 required
               />
@@ -239,6 +247,7 @@ export default function LoginPage({ initialMode }) {
             Email
             <input
               type="email"
+              autoComplete="email"
               value={form.email}
               onChange={(e) => setForm({ ...form, email: e.target.value })}
               placeholder="you@example.com"
@@ -251,6 +260,7 @@ export default function LoginPage({ initialMode }) {
             Password
             <input
               type="password"
+              autoComplete={mode === 'signup' ? 'new-password' : 'current-password'}
               value={form.password}
               onChange={(e) => setForm({ ...form, password: e.target.value })}
               placeholder={mode === 'signup' ? 'Min. 8 characters' : 'Your password'}
@@ -297,13 +307,27 @@ export default function LoginPage({ initialMode }) {
                 />
                 <span>I agree that my anonymized responses may be used for ISSB psychometric research.</span>
               </label>
+              <label className="checkbox-label terms-checkbox">
+                <input
+                  type="checkbox"
+                  checked={termsAccepted}
+                  onChange={(e) => setTermsAccepted(e.target.checked)}
+                  required
+                />
+                <span>I accept the Terms and Conditions below.</span>
+              </label>
+              <details className="auth-terms">
+                <summary>Read Terms and Conditions</summary>
+                <p>ISSB Prep is a practice tool. Its feedback is for preparation only, is not an official ISSB assessment, and does not guarantee selection.</p>
+                <p>Keep your account credentials private, provide accurate profile details, and use the service responsibly. Your practice responses are sent to the service to generate feedback and save your history. Research consent is requested separately above.</p>
+              </details>
             </>
           )}
 
           {slowLoading && loading && (
             <div className="auth-status-hint" role="status">
               <LoaderCircle className="spin" size={16} />
-              <span>Working, please wait… Loading…</span>
+              <span>This is taking a moment. We’re working on it.</span>
             </div>
           )}
 
@@ -342,7 +366,9 @@ export default function LoginPage({ initialMode }) {
             )}
           </button>
         </form>
-      </section>
+        </section>
+      </div>
+      <footer className="auth-footer">PPDT · WAT · TAT · SDT · SCT</footer>
     </main>
   )
 }
