@@ -1,10 +1,37 @@
-import { Clock3, Keyboard, Lightbulb, Target } from 'lucide-react'
-import TestCard from '../components/TestCard'
+import { ArrowRight, BookOpen, Clock3 } from 'lucide-react'
+import { Link } from 'react-router-dom'
 import { TESTS } from '../data/tests'
+import './practice.css'
 
 export default function PracticePage() {
-  return <div className="page practice-page"><section className="practice-intro"><div><span>Practice workspace</span><h2>Choose the skill you want to sharpen.</h2><p>Every session runs in a distraction-free workspace with timing, keyboard controls, and automatic local history.</p></div><div className="practice-meta"><span><Clock3/> 3–8 min</span><span><Keyboard/> Keyboard ready</span><span><Target/> Focused scoring</span></div></section><div className="practice-layout">
-    <section className="surface"><header className="surface-header"><h2>Test library</h2><p>Five core psychological test formats.</p></header><div className="practice-list">{TESTS.map((test) => <TestCard key={test.id} test={test} compact/>)}</div></section>
-    <aside className="surface tips-card"><Lightbulb /><h2>Practice deliberately</h2><p>Strong responses are specific, constructive, and action-oriented. Use each session to improve one habit.</p><ol><li>Keep stories positive and plausible.</li><li>Give the central character initiative.</li><li>Finish with a clear outcome.</li><li>Review patterns after every session.</li></ol></aside>
-  </div></div>
+  return (
+    <div className="page practice-page practice-clean">
+      <section className="practice-heading">
+        <p className="practice-kicker">PRACTICE WORKSPACE</p>
+        <h2>One session. One step forward.</h2>
+        <p>Choose a test, settle into a focused session, then learn from your feedback.</p>
+        <span className="practice-note"><Clock3 size={15} aria-hidden="true" /> Set your pace before you begin · Drafts saved automatically</span>
+      </section>
+      <section className="practice-library" aria-labelledby="practice-library-title">
+        <header><h2 id="practice-library-title">Test library</h2><span>5 practice formats</span></header>
+        <div className="practice-choices">
+          {TESTS.map((test, index) => {
+            const Icon = test.icon
+            return <Link key={test.id} to={`/practice/${test.id}`} className="practice-choice">
+              <span className="practice-choice-number">0{index + 1}</span>
+              <span className="practice-choice-icon"><Icon size={22} aria-hidden="true" /></span>
+              <span className="practice-choice-title"><strong>{test.name}</strong><span>{test.title}</span></span>
+              <span className="practice-choice-description">{test.description}</span>
+              <span className="practice-choice-action">Start <ArrowRight size={18} aria-hidden="true" /></span>
+            </Link>
+          })}
+        </div>
+      </section>
+      <aside className="practice-guidance">
+        <BookOpen size={22} aria-hidden="true" />
+        <div><h3>Make each session count.</h3><p>Keep responses specific and constructive. Review one improvement before starting again.</p></div>
+        <Link to="/guide">Read the guide <ArrowRight size={16} aria-hidden="true" /></Link>
+      </aside>
+    </div>
+  )
 }

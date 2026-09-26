@@ -29,6 +29,7 @@ import { useApp } from '../state/AppContext'
 import OlqScoreSection, { getScoreBand } from '../components/OlqScoreSection'
 import ReadinessRing from '../components/ReadinessRing'
 import { synthesizePsychologicalReadiness, getReadinessTier } from '../utils/psychologicalSynthesis'
+import './analytics.css'
 
 const TEST_TYPES = [
   { id: 'ppdt', name: 'PPDT', label: 'Picture Perception', color: 'var(--teal)' },
@@ -235,15 +236,12 @@ export default function AnalyticsPage() {
   }, [judgeReport, history])
 
   return (
-    <div className="page analytics-page">
-      {/* Header Banner */}
+    <div className="page analytics-page analytics-clean">
+      {/* Compact page description and data refresh */}
       <section className="analytics-header-banner">
         <div>
-          <span className="eyebrow"><BarChart3 size={15} /> Psychological Analytics</span>
-          <h2>Candidate Assessment & Progress</h2>
           <p>
-            Comprehensive analytics combining your performance across all five ISSB psychological tests
-            with AI psychometric evaluation.
+            See what’s improving, where to focus, and what to practice next.
           </p>
         </div>
         <div className="analytics-banner-actions">
@@ -255,9 +253,6 @@ export default function AnalyticsPage() {
           >
             <RefreshCw size={16} className={judgeLoading ? 'spin' : ''} /> Refresh
           </button>
-          <Link to="/practice" className="primary-button">
-            New Session <ChevronRight size={16} />
-          </Link>
         </div>
       </section>
 
@@ -276,12 +271,6 @@ export default function AnalyticsPage() {
         </div>
 
         <div className="stat-card">
-          <span className="stat-label">Personal Best Score</span>
-          <strong className="stat-value">{stats.best} / 10</strong>
-          <small className="stat-sub">Top evaluated performance</small>
-        </div>
-
-        <div className="stat-card">
           <span className="stat-label">Coverage Breadth</span>
           <strong className="stat-value">
             {completedBatteriesCount} / 5
@@ -295,19 +284,19 @@ export default function AnalyticsPage() {
         <div className="judge-card-header">
           <div className="judge-title-wrap">
             <div className="judge-badge-group">
-              <span className="judge-badge"><Sparkles size={16} /> Comprehensive AI Assessment</span>
+              <span className="judge-badge"><Sparkles size={16} /> Practice assessment</span>
               {judgeReport?.source === 'client_synthesis' ? (
                 <span className="judge-source-tag local" title="Evaluated locally using candidate psychometric synthesis engine">
                   <Cpu size={13} /> Local Psychometric Engine · Active
                 </span>
               ) : (
                 <span className="judge-source-tag cloud" title="Evaluated using central cloud psychometric model">
-                  <ShieldCheck size={13} /> Cloud Psychometric Model
+                  <ShieldCheck size={13} /> {judgeReport ? 'Cloud Psychometric Model' : 'Awaiting assessment'}
                 </span>
               )}
             </div>
             <h2>Overall Psychological Readiness</h2>
-            <p>Synthesis of candidate profile, personality traits, and readiness indicators</p>
+            <p>Feedback from your completed sessions—not an official ISSB assessment.</p>
           </div>
           <button
             className="secondary-button judge-reeval-btn"
@@ -359,29 +348,13 @@ export default function AnalyticsPage() {
               <div className="judge-score-box">
                 <ReadinessRing score={displayScore} dark />
                 <div className="judge-score-details">
-                  <span className="eyebrow">Estimated ISSB Readiness</span>
-                  <div className="tier-heading-row">
-                    <h3 className="readiness-tier-title">{readinessTitle}</h3>
-                    {readinessTierInfo && (
-                      <span
-                        className="readiness-tier-badge"
-                        style={{
-                          color: readinessTierInfo.color,
-                          backgroundColor: readinessTierInfo.bg,
-                          borderColor: readinessTierInfo.border,
-                        }}
-                      >
-                        {readinessTierInfo.badge}
-                      </span>
-                    )}
-                  </div>
+                  <span className="eyebrow">Assessment score</span>
+                  <p className="readiness-assessment-text">{readinessTitle}</p>
                   <div className="judge-meta-tags">
                     <span className="confidence-tag">
                       Confidence: <b>{judgeReport.confidence_level || 'standard'}</b>
                     </span>
-                    <span className="battery-count-tag">
-                      <Layers size={13} /> {completedBatteriesCount}/5 Batteries Active
-                    </span>
+
                   </div>
                 </div>
               </div>
@@ -390,51 +363,27 @@ export default function AnalyticsPage() {
                 <div className="judge-summary-box">
                   <div className="summary-box-header">
                     <h4><Award size={18} /> Personality & Leadership Profile</h4>
-                    <span className="eval-status-pill">Board Calibrated</span>
                   </div>
                   <p>{judgeReport.personality_profile_summary}</p>
                   
-                  {/* Battery Coverage Indicator Chips */}
-                  <div className="battery-coverage-chips">
-                    <span className="coverage-label">Battery Coverage:</span>
-                    {TEST_TYPES.map((t) => {
-                      const count = history.filter((item) => item.type?.toUpperCase() === t.name).length
-                      const hasData = count > 0
-                      return (
-                        <Link
-                          key={t.id}
-                          to={`/practice/${t.id}`}
-                          className={`battery-chip ${hasData ? 'active' : 'pending'}`}
-                          title={`${t.name} (${t.label}): ${count} attempt${count !== 1 ? 's' : ''}. Click to practice.`}
-                        >
-                          <span
-                            className="chip-dot"
-                            style={{ backgroundColor: hasData ? t.color : '#94a3b8' }}
-                          />
-                          <strong className="chip-name">{t.name}</strong>
-                          <span className="chip-count">{hasData ? count : '+'}</span>
-                        </Link>
-                      )
-                    })}
-                  </div>
                 </div>
               )}
             </div>
 
             {/* Cross-Test Battery Alignment & Consistency */}
             {judgeReport.consistency_analysis && (
-              <div className="judge-consistency-box">
+              <details className="judge-consistency-box analytics-details"><summary>Cross-test consistency</summary>
                 <div className="consistency-header">
                   <div className="consistency-title">
                     <Compass size={18} className="consistency-icon" />
-                    <strong>Cross-Test Battery Alignment & Consistency</strong>
+                    <strong>How your responses align</strong>
                   </div>
                   {judgeReport.consistency_badge && (
                     <span className="consistency-badge-pill">{judgeReport.consistency_badge}</span>
                   )}
                 </div>
                 <p>{judgeReport.consistency_analysis}</p>
-              </div>
+              </details>
             )}
 
             {/* Strengths & Improvement Areas */}
@@ -443,7 +392,6 @@ export default function AnalyticsPage() {
                 <div className="feedback-list-panel positive">
                   <div className="panel-title-wrap">
                     <h4><CheckCircle2 size={17} /> Key Strengths Across All Tests</h4>
-                    <span className="count-pill positive">{judgeReport.key_strengths_across_tests.length} Identified</span>
                   </div>
                   <ul>
                     {judgeReport.key_strengths_across_tests.map((s, idx) => (
@@ -459,7 +407,6 @@ export default function AnalyticsPage() {
                 <div className="feedback-list-panel focus">
                   <div className="panel-title-wrap">
                     <h4><Flame size={17} /> Areas Needing Development</h4>
-                    <span className="count-pill focus">{judgeReport.areas_needing_improvement.length} Focus Points</span>
                   </div>
                   <ul>
                     {judgeReport.areas_needing_improvement.map((a, idx) => (
@@ -490,7 +437,7 @@ export default function AnalyticsPage() {
                   <Lightbulb size={22} />
                 </div>
                 <div className="rec-body">
-                  <strong>Assessor's Strategic Directive & Action Plan</strong>
+                  <strong>Your next step</strong>
                   <p>{judgeReport.final_recommendation}</p>
                 </div>
               </div>
@@ -668,7 +615,7 @@ export default function AnalyticsPage() {
       </section>
 
       {/* Percentile Ranking Tool & Benchmark Averages */}
-      <section className="surface benchmark-section">
+      <details className="surface benchmark-section analytics-details"><summary>Compare with candidate benchmarks</summary>
         <div className="benchmark-grid">
           {/* Live Percentile Ranking Tool */}
           <div className="percentile-checker-box">
@@ -767,7 +714,7 @@ export default function AnalyticsPage() {
             )}
           </div>
         </div>
-      </section>
+      </details>
     </div>
   )
 }

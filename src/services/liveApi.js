@@ -45,14 +45,32 @@ function token() {
   return trimmed
 }
 
-async function request(path, options = {}) {
+const pendingEvaluations = new Map()
+
+function request(path, options = {}) {
+  if (options.method !== 'POST' || !/\/evaluate$/.test(path)) return performRequest(path, options)
+  // Coalesce identical in-flight submissions, but never automatically retry a POST.
+  const key = JSON.stringify([token(), path, options.body])
+  if (pendingEvaluations.has(key)) return pendingEvaluations.get(key)
+  const pending = performRequest(path, options).finally(() => pendingEvaluations.delete(key))
+  pendingEvaluations.set(key, pending)
+  return pending
+}
+
+async function performRequest(path, options = {}) {
+  if (typeof navigator !== 'undefined' && navigator.onLine === false) {
+    throw handleFetchError(new Error('Offline'), path)
+  }
   const authToken = token()
   const requestUrl = `${API_BASE_URL}${path}`
   let response
+  const controller = new AbortController()
+  const timeout = setTimeout(() => controller.abort(), options.method === 'POST' ? 120000 : 30000)
 
   try {
     response = await fetch(requestUrl, {
       ...options,
+      signal: controller.signal,
       headers: {
         'Content-Type': 'application/json',
         ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}),
@@ -60,7 +78,16 @@ async function request(path, options = {}) {
       },
     })
   } catch (networkErr) {
+    if (networkErr.name === 'AbortError') {
+      const error = new ApiNetworkError(options.method === 'POST'
+        ? 'The request timed out. It may still have completed on the server. Check your history before retrying; your saved draft is available.'
+        : 'The request timed out. Please try loading again.')
+      error.isTimeout = true
+      throw error
+    }
     throw handleFetchError(networkErr, requestUrl)
+  } finally {
+    clearTimeout(timeout)
   }
 
   const contentType = response.headers?.get ? (response.headers.get('content-type') || '') : ''

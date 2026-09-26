@@ -36,6 +36,7 @@ export default function LoginPage({ initialMode }) {
   })
   const [error, setError] = useState('')
   const [termsAccepted, setTermsAccepted] = useState(false)
+  const [showPassword, setShowPassword] = useState(false)
   const [loading, setLoading] = useState(false)
   const [slowLoading, setSlowLoading] = useState(false)
 
@@ -259,7 +260,7 @@ export default function LoginPage({ initialMode }) {
           <label>
             Password
             <input
-              type="password"
+              type={showPassword ? 'text' : 'password'}
               autoComplete={mode === 'signup' ? 'new-password' : 'current-password'}
               value={form.password}
               onChange={(e) => setForm({ ...form, password: e.target.value })}
@@ -269,6 +270,12 @@ export default function LoginPage({ initialMode }) {
               required
             />
           </label>
+
+          <button type="button" className="password-visibility" aria-pressed={showPassword}
+            onClick={() => setShowPassword((visible) => !visible)}>
+            {showPassword ? 'Hide password' : 'Show password'}
+          </button>
+          {mode === 'signup' && <p className="auth-account-note">Use at least 8 characters. Avoid reusing a password from another account.</p>}
 
           {mode === 'signup' && (
             <>

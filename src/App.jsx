@@ -10,6 +10,7 @@ import ProfilePage from './pages/ProfilePage'
 import LoginPage from './pages/LoginPage'
 import LandingPage from './pages/LandingPage'
 import WebMCPBridge from './components/WebMCPBridge'
+import ConnectionNotice from './components/ConnectionNotice'
 import { useApp } from './state/AppContext'
 
 function RequireAuth({ children }) {
@@ -24,6 +25,7 @@ export default function App() {
   return (
     <>
       <WebMCPBridge />
+      <ConnectionNotice />
       <Routes>
         <Route path="/landing" element={<LandingPage />} />
         <Route path="/login" element={<LoginPage />} />

@@ -1,0 +1,19 @@
+/* Size the chart by its actual panel width, including nested result dialogs. */
+.olq-radar-wrapper { container-type: inline-size; container-name: olq; min-width: 0; }
+.olq-radar-wrapper .olq-display-layout.view-dual { display: grid; grid-template-columns: minmax(0, 1fr); gap: 24px; }
+.olq-radar-wrapper .olq-display-layout.view-radar .radar-visual-panel { grid-template-columns: minmax(0, 1fr); }
+.olq-radar-wrapper :where(.radar-visual-panel, .radar-matrix-panel, .radar-chart-container, .olq-card, .olq-strip-item, .olq-card-identity) { min-width: 0; }
+.olq-radar-wrapper .olq-grid { grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr)); }
+.olq-radar-wrapper .olq-tactical-strip { grid-template-columns: repeat(auto-fit, minmax(min(100%, 180px), 1fr)); }
+.olq-radar-wrapper .strip-val-wrap { flex-wrap: wrap; gap: 6px 12px; }
+.olq-radar-wrapper .olq-card-top { align-items: flex-start; justify-content: space-between; }
+.olq-radar-wrapper .olq-card-identity { align-items: flex-start; flex: 1; }
+.olq-radar-wrapper .olq-name { overflow-wrap: anywhere; }
+.olq-radar-wrapper .olq-code, .olq-radar-wrapper .olq-score { flex-shrink: 0; }
+.olq-radar-wrapper .olq-card-meta { flex-wrap: wrap; gap: 8px; }
+.olq-radar-wrapper .radar-view-toggles { flex-wrap: wrap; }
+.olq-radar-wrapper .radar-svg { display: block; max-width: 480px; }
+@container olq (min-width: 900px) {
+  .olq-radar-wrapper .olq-display-layout.view-dual { grid-template-columns: minmax(0, .8fr) minmax(0, 1.2fr); }
+  .olq-radar-wrapper .olq-display-layout.view-radar .radar-visual-panel { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+}

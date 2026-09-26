@@ -1,0 +1,103 @@
+/* Shared visual language for public pages, workspace, and practice flows. */
+:root {
+  --ink: #0f172a;
+  --navy: #0f172a;
+  --navy-2: #1e3a5f;
+  --muted: #64748b;
+  --line: #e2e8f0;
+  --bg: #f8fafc;
+  --card: #fff;
+  --teal: #2563eb;
+  --green: #28754f;
+  --blue: #356998;
+  --violet: #7758a0;
+  --shadow: 0 16px 42px #0f172a08;
+  color: var(--ink);
+  background: var(--bg);
+}
+html { scrollbar-gutter: stable; }
+.connection-notice { position: sticky; top: 0; z-index: 110; padding: 12px 24px; background: #fffbeb; border-bottom: 1px solid #fcd34d; color: #78350f; font-size: .85rem; line-height: 1.5; }
+.auth-refresh .password-visibility { background: transparent; border: 0; color: #1d4ed8; padding: 8px 0; min-height: 44px; font-size: .78rem; }
+.auth-refresh .auth-account-note { font-size: .74rem; color: var(--muted); line-height: 1.6; margin: 0 0 12px; }
+.result-comparison { background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 12px; padding: 16px; color: #1e3a5f; line-height: 1.6; }
+.result-comparison small { display: block; color: var(--muted); margin-top: 6px; }
+:where(button, a, input, textarea, select, summary):focus-visible {
+  outline: 3px solid var(--teal);
+  outline-offset: 4px;
+}
+button:disabled { cursor: not-allowed; opacity: .65; }
+.app-shell :where(.surface, .test-card, .stat-card, .feature-banner-card,
+  .overall-judge-card, .today-panel, .readiness-hero, .streak-card,
+  .analytics-header-banner, .guide-hero-banner, .setup-panel, .active-test,
+  .result-panel, .profile-surface) { border-radius: 18px; }
+.app-shell :where(.primary-button, .secondary-button, .header-practice,
+  .header-guide-link, .hero-cta, .guide-tab-btn) { border-radius: 8px; min-height: 44px; }
+.app-shell .primary-button { background: var(--navy); color: #fff; }
+.app-shell .primary-button:hover:not(:disabled) { background: var(--navy-2); }
+.app-shell .secondary-button { border-color: var(--line); }
+.sidebar { background: var(--navy); scrollbar-color: #475569 transparent; }
+.nav-label { color: #94a3b8; }
+.sidebar .nav-link { color: #cbd5e1; }
+.sidebar .nav-link.active { background: #1e3a5f; color: #fff; }
+.sidebar .nav-link.active svg { color: #93c5fd; }
+.sidebar-card { background: #1e293b; border-color: #334155; }
+.sidebar-card p { color: #cbd5e1; }
+.sidebar-card a { background: #dbeafe; color: var(--navy); }
+.sidebar-card-header svg { color: #93c5fd; }
+.app-shell :where(.analytics-header-banner, .guide-hero-banner,
+  .streak-card, .judge-hero-grid, .practice-intro) { background: var(--navy); }
+.app-shell .practice-intro { border-radius: 18px; padding: 32px; gap: 24px; align-items: center; margin-bottom: 24px; }
+.app-shell .practice-intro > div:first-child > span { color: #93c5fd; }
+.app-shell .practice-intro p { color: #cbd5e1; font-size: .9rem; line-height: 1.6; }
+.app-shell .practice-meta span { background: #ffffff10; border-color: #ffffff30; color: #e2e8f0; }
+.app-shell .practice-meta svg { color: #93c5fd; }
+.app-shell .hero-cta { background: #dbeafe; color: var(--navy); }
+.app-shell .analytics-banner-actions .primary-button { background: #dbeafe; color: var(--navy); }
+.app-shell .analytics-banner-actions .secondary-button { background: #ffffff15; color: #fff; border-color: #ffffff40; }
+.app-shell :where(.hero-label, .tips-card > svg), .app-shell .tips-card li::before { color: #93c5fd; }
+.app-shell :where(.analytics-header-banner, .guide-hero-banner) p { color: #cbd5e1; }
+.app-shell :where(.readiness-row p, .readiness-hero > p, .tips-card > p,
+  .insight-panel > p:not(.eyebrow), .test-context > p) { color: #cbd5e1; }
+.app-shell :where(.judge-banner, .guide-banner) .banner-icon-badge {
+  background: #eff6ff; color: var(--teal);
+}
+.score-track i { background: var(--teal); }
+.app-shell :where(.test-card, .feature-banner-card):hover { border-color: #93c5fd; }
+.app-shell :where(input, textarea, select) { border-radius: 8px; }
+.topbar-actions { flex-wrap: wrap; justify-content: flex-end; }
+.profile-chip { max-width: 240px; }
+.profile-chip > span:last-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.modal-container { border-radius: 18px; }
+.modal-header { background: #f1f5f9; }
+.modal-title-wrap { min-width: 0; }
+.modal-title-wrap h2, .profile-hero h2 { overflow-wrap: anywhere; }
+.modal-icon, .test-icon { background: #eff6ff; }
+.analytics-lower-grid > *, .profile-test-grid > * { min-width: 0; }
+.app-shell .profile-hero { border-radius: 18px; }
+.app-shell .profile-hero div > span { color: #93c5fd; }
+@media (max-width: 980px) {
+  .analytics-lower-grid { grid-template-columns: minmax(0, 1fr); }
+  .profile-test-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+@media (max-width: 680px) {
+  .profile-test-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .profile-test-card-top { flex-wrap: wrap; }
+  .app-shell .practice-intro { padding: 24px 20px; align-items: flex-start; }
+  .topbar { gap: 12px; align-items: flex-start; }
+  .topbar-actions { gap: 8px; }
+  .header-guide-link { padding: 9px; }
+  .mobile-nav .nav-link.active { background: #eff6ff; }
+  .feature-banner-card { flex-wrap: wrap; gap: 12px; padding: 18px; }
+  .banner-link { margin-left: 0; }
+  .analytics-banner-actions, .guide-tab-pills { flex-wrap: wrap; }
+  .guide-tab-btn { padding: 10px 12px; }
+  .profile-hero-actions { width: 100%; margin-left: 0; }
+  .modal-overlay { padding: 12px; }
+  .modal-container { max-height: calc(100dvh - 24px); }
+  .modal-header, .modal-body { padding: 18px; }
+  .session-header { gap: 10px; }
+  .session-header h1 { overflow-wrap: anywhere; }
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; scroll-behavior: auto !important; }
+}

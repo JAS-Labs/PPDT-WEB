@@ -12,6 +12,7 @@ import {
   AlertTriangle
 } from 'lucide-react'
 import { OLQ_DEFINITIONS, getScoreBand } from './OlqScoreSection'
+import './olq-layout.css'
 
 const BENCHMARK_THRESHOLD = 7.0
 const RINGS = [2, 4, 6, 8, 10]

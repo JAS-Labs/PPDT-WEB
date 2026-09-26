@@ -13,6 +13,38 @@ afterEach(() => {
 })
 
 describe('production API contract', () => {
+  it('times out evaluation without automatically repeating the submission', async () => {
+    vi.useFakeTimers()
+    try {
+      fetch.mockImplementationOnce((_url, options) => new Promise((_resolve, reject) => {
+        options.signal.addEventListener('abort', () => reject(new DOMException('Aborted', 'AbortError')))
+      }))
+      const pending = practiceApi.submitWat([], 'timeout')
+      const assertion = expect(pending).rejects.toMatchObject({ isTimeout: true, message: expect.stringContaining('Check your history before retrying') })
+      await vi.advanceTimersByTimeAsync(120000)
+      await assertion
+      expect(fetch).toHaveBeenCalledTimes(1)
+    } finally { vi.useRealTimers() }
+  })
+  it('coalesces simultaneous identical evaluation submissions', async () => {
+    let resolveFetch
+    fetch.mockImplementationOnce(() => new Promise((resolve) => { resolveFetch = resolve }))
+    const payload = { image_id: 'duplicate-check', story_text: 'A test response' }
+    const first = practiceApi.submitPpdt(payload)
+    const second = practiceApi.submitPpdt(payload)
+    expect(fetch).toHaveBeenCalledTimes(1)
+    resolveFetch({ ok: true, json: async () => ({ session_id: 'once' }) })
+    expect(await first).toEqual(await second)
+    await practiceApi.submitPpdt(payload)
+    expect(fetch).toHaveBeenCalledTimes(2)
+  })
+
+  it('does not send evaluation requests while offline', async () => {
+    vi.spyOn(navigator, 'onLine', 'get').mockReturnValue(false)
+    await expect(practiceApi.submitWat([], 'A')).rejects.toMatchObject({ isOffline: true })
+    expect(fetch).not.toHaveBeenCalled()
+  })
+
   it('does not report incomplete history as a successful refresh', async () => {
     fetch.mockImplementation((url) => url.includes('/wat/history')
       ? Promise.resolve({ ok: false, status: 503, json: async () => ({ detail: 'Unavailable' }) })

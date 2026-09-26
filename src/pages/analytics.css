@@ -1,0 +1,76 @@
+.analytics-clean { gap: 24px; max-width: 1200px; }
+.app-shell .analytics-clean .analytics-header-banner { background: transparent; color: var(--ink); border-radius: 0; padding: 0; align-items: center; gap: 16px; }
+.app-shell .analytics-clean .analytics-header-banner p { color: var(--muted); font-size: .9rem; }
+.app-shell .analytics-clean .analytics-banner-actions .secondary-button { color: #334155; background: #fff; border: 1px solid var(--line); }
+.app-shell .analytics-clean .analytics-banner-actions .primary-button { color: #fff; background: var(--navy); }
+.analytics-clean .analytics-stat-row { gap: 14px; }
+.analytics-clean .analytics-stat-row { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.analytics-clean .analytics-details > summary { cursor: pointer; color: #334155; font-size: .86rem; font-weight: 700; padding: 8px 0; }
+.analytics-clean .analytics-details[open] > summary { margin-bottom: 18px; }
+.analytics-clean .analytics-details { border-color: var(--line); }
+.analytics-clean .stat-card { padding: 22px; border-radius: 14px; }
+.analytics-clean .stat-label { font-size: .72rem; }
+.analytics-clean .stat-value { font-size: 1.65rem; padding: 5px 0; }
+.analytics-clean .stat-sub { color: var(--muted); font-size: .7rem; font-weight: 500; }
+.analytics-clean .overall-judge-card { padding: 28px; box-shadow: none; }
+.analytics-clean .judge-card-header { flex-wrap: wrap; }
+.analytics-clean .judge-title-wrap { flex: 1; min-width: 250px; }
+.analytics-clean .judge-title-wrap h2 { font-size: 1.3rem; letter-spacing: -.025em; }
+.analytics-clean .judge-badge { border: 0; background: transparent; color: #2563eb; padding: 0; font-size: .67rem; }
+.analytics-clean .judge-source-tag { font-size: .65rem; background: #f1f5f9; border: 0; color: #64748b; }
+.app-shell .analytics-clean .judge-hero-grid { background: #f8fafc; color: var(--ink); border: 1px solid var(--line); box-shadow: none; grid-template-columns: minmax(0, 1fr); border-radius: 14px; padding: 24px; gap: 24px; }
+.analytics-clean .judge-score-box { border: 0; padding: 0; align-items: flex-start; text-align: left; }
+.analytics-clean .judge-score-details { min-width: 0; flex: 1; gap: 10px; }
+.analytics-clean .readiness-assessment-text { margin: 0; font-size: .95rem; font-weight: 500; line-height: 1.65; color: var(--ink); overflow-wrap: anywhere; }
+.analytics-clean .judge-meta-tags { justify-content: flex-start; }
+.analytics-clean .judge-summary-box { min-width: 0; justify-content: flex-start; border-top: 1px solid var(--line); padding-top: 20px; }
+.analytics-clean .readiness-tier-title { color: var(--ink); }
+.analytics-clean .readiness-ring.dark { color: #fff; }
+.analytics-clean .judge-summary-box h4 { color: #1d4ed8; font-size: .92rem; }
+.analytics-clean .judge-summary-box p { color: #475569; font-size: .85rem; }
+.analytics-clean .eval-status-pill { color: #64748b; border: 0; background: #e2e8f0; font-size: .6rem; }
+.analytics-clean :where(.confidence-tag, .battery-count-tag) { background: #e2e8f0; color: #475569; }
+.analytics-clean .confidence-tag b { color: #1d4ed8; }
+.analytics-clean .battery-coverage-chips { border-color: var(--line); }
+.analytics-clean .coverage-label { color: #64748b; }
+.analytics-clean .battery-chip.active { background: #eff6ff; color: #1d4ed8; border-color: #bfdbfe; }
+.analytics-clean .battery-chip.pending { background: #fff; color: #64748b; border-color: #cbd5e1; }
+.analytics-clean .battery-chip .chip-count { background: #e2e8f0; }
+.analytics-clean .judge-consistency-box { background: #fff; border-radius: 12px; }
+.analytics-clean .consistency-title { font-size: .85rem; }
+.analytics-clean .judge-traits-grid { gap: 16px; }
+.analytics-clean .feedback-list-panel { border-radius: 12px; padding: 20px; background: #fff; border-color: var(--line); }
+.analytics-clean .panel-title-wrap { flex-wrap: wrap; }
+.analytics-clean .feedback-list-panel h4 { font-size: .86rem; }
+.analytics-clean .feedback-list-panel li { color: #475569; font-size: .82rem; }
+.analytics-clean .judge-final-recommendation { background: #eff6ff; border-color: #bfdbfe; border-radius: 12px; }
+.analytics-clean .judge-final-recommendation :where(.rec-icon-wrap, .rec-body strong) { color: #1d4ed8; }
+.analytics-clean .judge-final-recommendation .rec-icon-wrap { background: #dbeafe; }
+.analytics-clean .judge-final-recommendation .rec-body p { color: #334155; }
+.analytics-clean .judge-notice-banner { background: #eff6ff; border-color: #bfdbfe; color: #1e3a5f; flex-wrap: wrap; }
+.analytics-clean .analytics-lower-grid { grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr); }
+.analytics-clean .surface-header h2 { font-size: 1.1rem; letter-spacing: -.025em; }
+.analytics-clean .test-breakdown-item { padding-block: 18px; }
+.analytics-clean .benchmark-grid { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+.analytics-clean .benchmark-table-wrap { overflow-x: auto; }
+.analytics-clean .benchmark-grid > * { min-width: 0; }
+.analytics-clean .percentile-form-row { display: grid; grid-template-columns: minmax(0, 1fr) minmax(90px, .4fr); align-items: end; gap: 14px; }
+.analytics-clean .percentile-form-row label { min-width: 0; }
+.analytics-clean .percentile-form-row :is(select, input) { width: 100%; min-width: 0; box-sizing: border-box; }
+.analytics-clean .percentile-form-row > button { grid-column: 1 / -1; width: 100%; }
+@media (max-width: 1100px) {
+  .app-shell .analytics-clean .judge-hero-grid { grid-template-columns: minmax(0, 1fr); }
+  .analytics-clean .analytics-header-banner { flex-wrap: wrap; gap: 20px; }
+  .analytics-clean .analytics-lower-grid, .analytics-clean .benchmark-grid { grid-template-columns: minmax(0, 1fr); }
+}
+@media (max-width: 680px) {
+  .analytics-clean .analytics-stat-row { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+  .analytics-clean .stat-card { padding: 16px; }
+  .analytics-clean .stat-value { font-size: 1.3rem; }
+  .analytics-clean .overall-judge-card { padding: 18px; }
+  .analytics-clean .judge-title-wrap { min-width: 0; }
+  .analytics-clean .judge-traits-grid { grid-template-columns: minmax(0, 1fr); }
+  .analytics-clean .judge-reeval-btn { white-space: normal; }
+  .analytics-clean .test-breakdown-item { flex-wrap: wrap; gap: 12px; }
+  .analytics-clean .panel-title-wrap .count-pill { font-size: .6rem; }
+}

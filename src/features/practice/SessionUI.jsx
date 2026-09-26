@@ -4,6 +4,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import OlqScoreSection, { getScoreBand, OLQ_DEFINITIONS } from '../../components/OlqScoreSection'
 import CommunityResponsesModal from '../../components/CommunityResponsesModal'
 import './recovery.css'
+import { useApp } from '../../state/AppContext'
 
 function formatTrait(item) {
   if (typeof item !== 'string') return item?.trait || JSON.stringify(item)
@@ -37,6 +38,11 @@ export function SessionHeader({ test, step, total, phase }) {
 export function SessionResult({ test, score, detail, metrics = [], onAgain, feedback = null, imageId = null }) {
   const navigate = useNavigate()
   const [showCommunity, setShowCommunity] = useState(false)
+  const { history = [] } = useApp()
+  const sameTest = history.filter((attempt) => attempt.type?.toUpperCase() === test.name.toUpperCase())
+  // The newest saved attempt is the current result, not its comparison baseline.
+  const previous = sameTest[1]
+  const previousScore = previous ? Number(previous.score) : NaN
 
   const numScore = Number(score) || 0
   const band = getScoreBand(numScore)
@@ -91,6 +97,12 @@ export function SessionResult({ test, score, detail, metrics = [], onAgain, feed
         </div>
         <h2>Session saved</h2>
         <p className="result-detail-text">{detail}</p>
+        {Number.isFinite(previousScore) && <p className="result-comparison">
+          Previous {test.name}: {previousScore.toFixed(1)}/10 · {numScore === previousScore
+            ? 'Same score as last time'
+            : `${numScore > previousScore ? '+' : ''}${(numScore - previousScore).toFixed(1)} points this session`}
+          <small>Scores are practice feedback, not an official selection prediction.</small>
+        </p>}
         <section className="result-takeaways" aria-label="Session takeaways">
           <article><h3>Build on this</h3><p>{strengths[0] || 'Review the section feedback to identify what worked in this response.'}</p></article>
           <article><h3>Focus next</h3><p>{areas[0] || 'Choose one detail from your feedback to improve in the next session.'}</p></article>

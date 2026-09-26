@@ -101,6 +101,44 @@ afterEach(() => {
 })
 
 describe('application routes', () => {
+  it.skipIf(!process.env.PPDT_UI_SNAPSHOTS)('exports inert UI-review snapshots with mocked account data', async () => {
+    const { mkdirSync, writeFileSync } = await import('node:fs')
+    mkdirSync('public/__ui_review', { recursive: true })
+    for (const [name, path] of [['dashboard', '/'], ['practice', '/practice'], ['history', '/history'], ['analytics', '/analytics'], ['guide', '/guide'], ['profile', '/profile'], ...['ppdt', 'wat', 'tat', 'sdt', 'sct'].map((id) => [id, `/practice/${id}`])]) {
+      renderAt(path, true)
+      await waitFor(() => expect(getAllHistory).toHaveBeenCalled())
+      await new Promise((resolve) => setTimeout(resolve, 100))
+      if (name === 'analytics') {
+        await userEvent.click(await screen.findByRole('tab', { name: 'Dual View' }))
+        await userEvent.click(screen.getByText('Compare with candidate benchmarks'))
+      }
+      writeFileSync(`public/__ui_review/${name}.html`, `<!doctype html><html><head><meta name="viewport" content="width=device-width,initial-scale=1"><link rel="stylesheet" href="/src/styles.css"><link rel="stylesheet" href="/src/ui-theme.css"><link rel="stylesheet" href="/src/features/practice/recovery.css"><link rel="stylesheet" href="/src/pages/practice.css"><link rel="stylesheet" href="/src/pages/analytics.css"><link rel="stylesheet" href="/src/components/olq-layout.css"><style>.page{animation:none}</style><title>UI review — ${name}</title></head><body><aside style="padding:8px;background:#eff6ff;color:#1e3a5f">Automated UI review · sample data · controls inactive</aside>${document.body.innerHTML}</body></html>`)
+      cleanup(); localStorage.clear()
+    }
+  })
+  it('shows and hides passwords without changing the entered value', async () => {
+    const user = userEvent.setup()
+    renderAt('/login')
+    const input = screen.getByLabelText('Password')
+    await user.type(input, 'Example123!')
+    await user.click(screen.getByRole('button', { name: 'Show password' }))
+    expect(input).toHaveAttribute('type', 'text')
+    expect(input).toHaveValue('Example123!')
+    await user.click(screen.getByRole('button', { name: 'Hide password' }))
+    expect(input).toHaveAttribute('type', 'password')
+  })
+
+  it('announces offline and reconnected status', () => {
+    const online = vi.spyOn(navigator, 'onLine', 'get')
+    renderAt('/login')
+    online.mockReturnValue(false)
+    fireEvent(window, new Event('offline'))
+    expect(screen.getByRole('status')).toHaveTextContent(/You’re offline/)
+    online.mockReturnValue(true)
+    fireEvent(window, new Event('online'))
+    expect(screen.queryByText(/You’re offline/)).not.toBeInTheDocument()
+    online.mockRestore()
+  })
   it.each([
     ['/', 'Your readiness', true],
     ['/landing', 'Prepare with focus.Progress with clarity.', false],
@@ -261,9 +299,22 @@ describe('live practice integrations', () => {
 })
 
 describe('analytics and evaluation guide features', () => {
+  it('renders long readiness feedback as body text without truncating it', async () => {
+    const assessment = 'Very low readiness - no valid data across any test, fundamental understanding of test formats and requirements is absent. Immediate and structured practice is needed.'
+    analyticsApi.getOverallJudge.mockResolvedValueOnce({
+      overall_readiness_score: 1,
+      estimated_issb_readiness: assessment,
+      personality_profile_summary: 'More completed responses are needed to build a meaningful profile.',
+    })
+    renderAt('/analytics', true)
+    const feedback = await screen.findByText(assessment)
+    expect(feedback.tagName).toBe('P')
+    expect(feedback).toHaveClass('readiness-assessment-text')
+    expect(screen.getByText('More completed responses are needed to build a meaningful profile.')).toBeInTheDocument()
+  })
   it('loads overall judge psychological report and benchmarks on /analytics', async () => {
     renderAt('/analytics', true)
-    expect(screen.getByRole('heading', { name: 'Candidate Assessment & Progress' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Psychological analytics', level: 1 })).toBeInTheDocument()
     await waitFor(() => expect(screen.getByText(/Recommended/i)).toBeInTheDocument())
     expect(screen.getByText(/Displays high initiative, emotional composure/)).toBeInTheDocument()
     expect(analyticsApi.getOverallJudge).toHaveBeenCalled()
@@ -273,10 +324,10 @@ describe('analytics and evaluation guide features', () => {
   it('gracefully falls back to client psychometric synthesis when overall judge endpoint fails with error', async () => {
     analyticsApi.getOverallJudge.mockRejectedValueOnce(new Error('Failed to fetch'))
     renderAt('/analytics', true)
-    expect(screen.getByRole('heading', { name: 'Candidate Assessment & Progress' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Psychological analytics', level: 1 })).toBeInTheDocument()
     await waitFor(() => expect(screen.getByText(/Local Psychometric Engine/i)).toBeInTheDocument())
     expect(screen.getByText(/Cumulative Officer Like Qualities/i)).toBeInTheDocument()
-    expect(screen.getByText(/Cross-Test Battery Alignment/i)).toBeInTheDocument()
+    expect(screen.getByText('Cross-test consistency')).toBeInTheDocument()
     expect(screen.queryByText('Failed to fetch')).not.toBeInTheDocument()
     expect(screen.getByText(/Remote AI Judge is currently unreachable/i)).toBeInTheDocument()
   })
@@ -541,7 +592,7 @@ describe('analytics and evaluation guide features', () => {
     const { container: analyticsContainer } = renderAt('/analytics', true)
     await waitFor(() => expect(screen.getByText(/Recommended/i)).toBeInTheDocument())
     expect(analyticsContainer.textContent).not.toMatch(/deepseek/i)
-    expect(screen.getByText(/Comprehensive AI Assessment/i)).toBeInTheDocument()
+    expect(screen.getByText(/Practice assessment/i)).toBeInTheDocument()
   })
 
   it('renders compact Build your streak section with header in sidebar without overlapping profile', () => {
