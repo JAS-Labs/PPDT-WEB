@@ -4,7 +4,6 @@ import {
   BookOpen,
   CalendarDays,
   CheckCircle2,
-  Cloud,
   Gauge,
   Play,
   Sparkles
@@ -14,6 +13,7 @@ import ReadinessRing from '../components/ReadinessRing'
 import TestCard from '../components/TestCard'
 import { TESTS } from '../data/tests'
 import { useApp } from '../state/AppContext'
+import './dashboard.css'
 
 function pickRecommendedTest(history) {
   for (const test of TESTS) {
@@ -61,11 +61,11 @@ export default function DashboardPage() {
           <div className="orb one" />
           <div className="orb two" />
           <div className="hero-label">
-            <Gauge size={17} /> Readiness command center
+            <Gauge size={17} /> Your next session
           </div>
-          <h2>Train the judgment behind every response.</h2>
+          <h2>Keep your practice moving.</h2>
           <p className="hero-intro">
-            Build a balanced profile across the five psychological tests with focused, timed practice.
+            {recommendation.reason}. Build your skills one response at a time.
           </p>
 
           <div className="web-hero-bottom">
@@ -74,8 +74,7 @@ export default function DashboardPage() {
               <div>
                 <h3>{Number(stats.average) >= 7 ? 'Strong progress' : 'Foundation stage'}</h3>
                 <p>
-                  {stats.sessions} recorded sessions · best score {stats.best}
-                  {stats.sessions > 0 && ` · ${recommendation.reason}`}
+                  {stats.sessions} recorded sessions · Average practice score
                 </p>
               </div>
             </div>
@@ -92,7 +91,7 @@ export default function DashboardPage() {
             <span><CalendarDays size={21} /></span>
             <div>
               <p>Suggested plan</p>
-              <h3>12 minutes</h3>
+              <h3>Practice & review</h3>
             </div>
           </div>
 
@@ -101,7 +100,7 @@ export default function DashboardPage() {
               {completedPpdt ? <CheckCircle2 /> : <span className="plan-number">1</span>}
               <span>
                 <b>PPDT observation</b>
-                <small>{completedPpdt ? 'Recorded in live history' : 'Start with one live image'}</small>
+                <small>{completedPpdt ? 'Previously practiced' : 'Start with one image'}</small>
               </span>
             </div>
 
@@ -109,7 +108,7 @@ export default function DashboardPage() {
               {completedWat ? <CheckCircle2 /> : <span className="plan-number">2</span>}
               <span>
                 <b>WAT sprint</b>
-                <small>{completedWat ? 'Completed sprint' : 'Active API prompt set'}</small>
+                <small>{completedWat ? 'Previously practiced' : 'Build clear, focused responses'}</small>
               </span>
             </div>
 
@@ -187,13 +186,6 @@ export default function DashboardPage() {
             <div>
               <span>Personal best</span>
               <strong>{stats.best}</strong>
-            </div>
-            <div className="streak-inline">
-              <Cloud size={20} />
-              <span>
-                <b>Live account data</b>
-                <small>Synced from all five test histories</small>
-              </span>
             </div>
           </section>
         </aside>
