@@ -3,6 +3,7 @@ import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import OlqScoreSection, { getScoreBand, OLQ_DEFINITIONS } from '../../components/OlqScoreSection'
 import CommunityResponsesModal from '../../components/CommunityResponsesModal'
+import './recovery.css'
 
 function formatTrait(item) {
   if (typeof item !== 'string') return item?.trait || JSON.stringify(item)
@@ -90,6 +91,11 @@ export function SessionResult({ test, score, detail, metrics = [], onAgain, feed
         </div>
         <h2>Session saved</h2>
         <p className="result-detail-text">{detail}</p>
+        <section className="result-takeaways" aria-label="Session takeaways">
+          <article><h3>Build on this</h3><p>{strengths[0] || 'Review the section feedback to identify what worked in this response.'}</p></article>
+          <article><h3>Focus next</h3><p>{areas[0] || 'Choose one detail from your feedback to improve in the next session.'}</p></article>
+          <article><h3>Your next practice</h3><p>Try another {test.name} session and apply one change. Compare the feedback in your history.</p></article>
+        </section>
 
         {/* Red Flag Warning Alert */}
         {hasRedFlags && (

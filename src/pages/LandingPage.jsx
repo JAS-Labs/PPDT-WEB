@@ -1,440 +1,94 @@
-import {
-  ArrowRight,
-  BookOpen,
-  CheckCircle2,
-  Clock,
-  Dumbbell,
-  Gauge,
-  LogIn,
-  Play,
-  ShieldAlert,
-  ShieldCheck,
-  Sparkles,
-  TrendingUp,
-  UserCheck,
-  Zap,
-} from 'lucide-react'
+import { ArrowRight, BookOpen, Check, Clock3 } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { TESTS } from '../data/tests'
 import { useApp } from '../state/AppContext'
+import './landing.css'
 
-const TEST_DETAILS = [
-  {
-    id: 'ppdt',
-    name: 'PPDT',
-    fullName: 'Picture Perception & Description Test',
-    timing: '30s view · 1m spot · 3.5m write',
-    description: 'Observe a hazy stimulus image, identify characters, mood, and age, then compose a structured story with problem resolution.',
-    color: 'teal',
-  },
-  {
-    id: 'wat',
-    name: 'WAT',
-    fullName: 'Word Association Test',
-    timing: '15s per word prompt',
-    description: 'Respond rapidly to stimulus words to project spontaneous subconscious associations, emotional composure, and positive action.',
-    color: 'navy',
-  },
-  {
-    id: 'tat',
-    name: 'TAT',
-    fullName: 'Thematic Apperception Test',
-    timing: '30s stimulus · 3.5m story',
-    description: 'Interpret dramatic or ambiguous life situations to demonstrate initiative, leadership traits, empathy, and resilience under pressure.',
-    color: 'blue',
-  },
-  {
-    id: 'sdt',
-    name: 'SDT',
-    fullName: 'Self Description Test',
-    timing: '15 mins across 5 viewpoints',
-    description: 'Self-evaluate honestly through the eyes of parents, teachers, friends, self-appraisal, and aspirations for self-improvement.',
-    color: 'purple',
-  },
-  {
-    id: 'sct',
-    name: 'SCT',
-    fullName: 'Sentence Completion Test',
-    timing: '30 rapid sentence stems',
-    description: 'Complete open sentence stems under strict time constraints to reveal core personal convictions, ethics, and attitude toward challenges.',
-    color: 'coral',
-  },
-]
-
-const OLQ_HIGHLIGHTS = [
-  {
-    title: 'Effective Intelligence & Planning',
-    desc: 'Practical problem solving, resourcefulness, and sound judgment in complex scenarios.',
-  },
-  {
-    title: 'Social Adaptability & Cooperation',
-    desc: 'Ability to bond with team members, adapt to varying groups, and place group success first.',
-  },
-  {
-    title: 'Initiative & Self Confidence',
-    desc: 'Taking the lead in unexpected situations with composure, conviction, and decisive clarity.',
-  },
-  {
-    title: 'Emotional Stability & Courage',
-    desc: 'Calm under intense pressure, maintaining constructive narrative framing without panic.',
-  },
-]
+const summaries = {
+  ppdt: 'Observe a picture. Turn what you see into a clear story.',
+  wat: 'Build fluency with quick responses to individual words.',
+  tat: 'Explore a situation through a complete, purposeful narrative.',
+  sdt: 'Reflect on your strengths, habits, and areas for growth.',
+  sct: 'Complete unfinished sentences in your own words.',
+}
 
 export default function LandingPage() {
   const { isAuthenticated } = useApp()
+  const practicePath = isAuthenticated ? '/practice' : '/signup'
 
   return (
-    <div className="landing-page">
-      {/* Top Navigation */}
-      <header className="landing-nav">
-        <div className="landing-nav-inner">
-          <Link to="/" className="brand landing-brand">
-            <span className="brand-mark logo">
-              <img src="/app-logo.png" alt="ISSB Prep logo" />
-            </span>
-            <span>ISSB Prep</span>
-          </Link>
-
-          <nav className="landing-nav-links" aria-label="Landing page links">
-            <a href="#tests">Psychological Tests</a>
-            <a href="#evaluation">AI Evaluation</a>
-            <a href="#how-it-works">How It Works</a>
-            <Link
-              to={isAuthenticated ? '/guide' : '/login'}
-              state={{ from: '/guide' }}
-              className="landing-guide-link"
-            >
-              <BookOpen size={16} /> Evaluation Guide
-            </Link>
+    <div className="lp">
+      <a className="lp-skip" href="#main">Skip to content</a>
+      <header className="lp-nav">
+        <div className="lp-container lp-nav-inner">
+          <Link to="/" className="lp-brand"><img src="/app-logo.png" alt="" width="40" height="40" />ISSB Prep</Link>
+          <nav aria-label="Landing page links">
+            <a href="#tests">Practice tests</a>
+            <a href="#how-it-works">How it works</a>
           </nav>
-
-          <div className="landing-nav-actions">
-            {isAuthenticated ? (
-              <Link to="/" className="landing-cta-btn">
-                Go to Dashboard <ArrowRight size={16} />
-              </Link>
-            ) : (
-              <>
-                <Link to="/login" className="landing-login-btn">
-                  <LogIn size={16} /> Sign in
-                </Link>
-                <Link to="/signup" className="landing-cta-btn">
-                  Get started <ArrowRight size={16} />
-                </Link>
-              </>
-            )}
-          </div>
+          <Link className="lp-nav-login" to={isAuthenticated ? '/' : '/login'}>
+            {isAuthenticated ? 'Go to Dashboard' : 'Sign in'} <ArrowRight size={16} />
+          </Link>
         </div>
       </header>
 
-      {/* Hero Section */}
-      <section className="landing-hero" id="overview">
-        <div className="landing-container">
-          <div className="landing-hero-content">
-            <span className="landing-badge">
-              <Sparkles size={16} /> AI-Powered Defence Psychological Assessment
-            </span>
-            <h1>
-              Master the ISSB <br />
-              <span>Psychological Screening</span>
-            </h1>
-            <p className="landing-hero-sub">
-              Authentic timed simulations for <strong>PPDT</strong>, <strong>WAT</strong>, <strong>TAT</strong>, <strong>SDT</strong>, and <strong>SCT</strong>. Receive instant psychometric scoring mapped to the 9 Officer Like Qualities (OLQs) and automated red flag detection.
-            </p>
+      <main id="main">
+        <section className="lp-hero">
+          <div className="lp-container lp-hero-grid">
+            <div>
+              <p className="lp-eyebrow">A little practice. A clearer perspective.</p>
+              <h1>Prepare with focus.<br /><span>Progress with clarity.</span></h1>
+              <p className="lp-intro">Your space for ISSB psychological test practice. Work through timed sessions, understand your responses, and build on what you learn.</p>
+              <div className="lp-actions">
+                <Link to={practicePath} state={{ from: '/practice' }} className="lp-button">
+                  {isAuthenticated ? 'Open Practice Workspace' : 'Start practicing'} <ArrowRight size={18} />
+                </Link>
+                <a href="#tests" className="lp-text-link">Explore the tests</a>
+              </div>
+              <p className="lp-hero-note">Five test formats. Timed practice. Personal feedback.</p>
+            </div>
+            <aside className="lp-preview" aria-label="Example practice feedback">
+              <div className="lp-preview-top"><span>YOUR PRACTICE, IN PERSPECTIVE</span><span className="lp-example">Example</span></div>
+              <div className="lp-preview-title"><div><p>After a session</p><h2>A clearer next step.</h2></div><BookOpen size={28} /></div>
+              <div className="lp-feedback-item"><span className="lp-check"><Check size={18} /></span><div><h3>What worked</h3><p>Your story gives the central character a clear goal and a purposeful action.</p></div></div>
+              <div className="lp-feedback-item"><span className="lp-step">↗</span><div><h3>What to try next</h3><p>Connect the ending to the action. Show how the character helped resolve the situation.</p></div></div>
+              <div className="lp-preview-footer"><Clock3 size={16} /><span>Practice → reflect → try again</span></div>
+            </aside>
+          </div>
+        </section>
 
-            <div className="landing-hero-actions">
-              <Link
-                to={isAuthenticated ? '/practice' : '/login'}
-                state={{ from: '/practice' }}
-                className="landing-primary-btn"
-              >
-                <Play size={18} /> {isAuthenticated ? 'Open Practice Workspace' : 'Start Free Practice'}
+        <section id="tests" className="lp-section lp-container">
+          <div className="lp-section-heading"><div><p className="lp-eyebrow">THE PRACTICE LIBRARY</p><h2>Five ways to sharpen your thinking.</h2></div><p>Choose a format and work at your own pace.</p></div>
+          <div className="lp-test-list">
+            {TESTS.map(({ id, name, title, icon: Icon }, index) => (
+              <Link key={id} to={isAuthenticated ? `/practice/${id}` : '/login'} state={{ from: `/practice/${id}` }} className="lp-test-row" aria-label={`Practice ${name}`}>
+                <span className="lp-test-number">0{index + 1}</span>
+                <span className="lp-test-icon"><Icon size={22} /></span>
+                <div className="lp-test-title"><h3>{name}</h3><span>{title}</span></div>
+                <p>{summaries[id]}</p>
+                <ArrowRight size={20} className="lp-row-arrow" />
               </Link>
-              <Link
-                to={isAuthenticated ? '/guide' : '/login'}
-                state={{ from: '/guide' }}
-                className="landing-secondary-btn"
-              >
-                <BookOpen size={18} /> Read OLQ Guide
-              </Link>
-            </div>
-
-            <div className="landing-stats-row">
-              <div className="landing-stat">
-                <strong>5</strong>
-                <span>Psychological Tests</span>
-              </div>
-              <div className="landing-stat">
-                <strong>9</strong>
-                <span>Officer Like Qualities</span>
-              </div>
-              <div className="landing-stat">
-                <strong>10-Point</strong>
-                <span>Board Rubric Scale</span>
-              </div>
-              <div className="landing-stat">
-                <strong>100%</strong>
-                <span>Board-Accurate Timers</span>
-              </div>
-            </div>
-          </div>
-
-          {/* Hero Preview Card */}
-          <div className="landing-hero-preview">
-            <div className="preview-card">
-              <div className="preview-card-header">
-                <div>
-                  <span className="preview-tag">Assessment Verdict</span>
-                  <h3>Candidate Readiness Index</h3>
-                </div>
-                <div className="preview-score">
-                  <strong>8.2</strong>
-                  <small>/10</small>
-                </div>
-              </div>
-
-              <div className="preview-badge-row">
-                <span className="verdict-pill recommended">
-                  <ShieldCheck size={16} /> Recommended Candidate
-                </span>
-                <span className="verdict-pill verified">
-                  <CheckCircle2 size={16} /> High Consistency
-                </span>
-              </div>
-
-              <div className="preview-bars">
-                <div className="bar-item">
-                  <div className="bar-label">
-                    <span>Leadership Potential (LDR)</span>
-                    <b>8.5</b>
-                  </div>
-                  <div className="bar-track"><div className="bar-fill" style={{ width: '85%' }} /></div>
-                </div>
-                <div className="bar-item">
-                  <div className="bar-label">
-                    <span>Social Adaptability (SOC)</span>
-                    <b>8.0</b>
-                  </div>
-                  <div className="bar-track"><div className="bar-fill" style={{ width: '80%' }} /></div>
-                </div>
-                <div className="bar-item">
-                  <div className="bar-label">
-                    <span>Emotional Stability (EMS)</span>
-                    <b>8.2</b>
-                  </div>
-                  <div className="bar-track"><div className="bar-fill" style={{ width: '82%' }} /></div>
-                </div>
-              </div>
-
-              <div className="preview-shield-note">
-                <ShieldCheck size={18} className="shield-icon" />
-                <div>
-                  <b>Psychometric Red Flag Screening: Clean</b>
-                  <p>0 indicators of aggression, depression, or antisocial framing detected.</p>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* 5 Psychological Tests Showcase */}
-      <section className="landing-section tests-section" id="tests">
-        <div className="landing-container">
-          <div className="section-head">
-            <span className="eyebrow">Comprehensive Test Battery</span>
-            <h2>The Five Core Psychological Tests</h2>
-            <p>Every test simulates the authentic ISSB time windows, prompt rotations, and psychological evaluation criteria.</p>
-          </div>
-
-          <div className="landing-tests-grid">
-            {TEST_DETAILS.map((test) => (
-              <div key={test.id} className="landing-test-card">
-                <div className="test-card-top">
-                  <span className={`test-badge ${test.color}`}>{test.name}</span>
-                  <span className="test-timing">
-                    <Clock size={15} /> {test.timing}
-                  </span>
-                </div>
-                <h3>{test.fullName}</h3>
-                <p>{test.description}</p>
-                <div className="test-card-action">
-                  <Link
-                    to={isAuthenticated ? `/practice/${test.id}` : '/login'}
-                    state={{ from: `/practice/${test.id}` }}
-                    className="test-link"
-                  >
-                    Practice {test.name} <ArrowRight size={15} />
-                  </Link>
-                </div>
-              </div>
             ))}
           </div>
-        </div>
-      </section>
+        </section>
 
-      {/* AI Evaluation & OLQ Rubrics */}
-      <section className="landing-section eval-section" id="evaluation">
-        <div className="landing-container">
-          <div className="eval-grid">
-            <div className="eval-copy">
-              <span className="eyebrow">Objective Psychologist Rubrics</span>
-              <h2>AI Psychometric Analysis Calibrated for Defence Boards</h2>
-              <p>
-                Unlike generic writing assistants, our evaluation model assesses your projective narratives and prompt responses against the 9 core Officer Like Qualities (OLQs) recognized by military selection boards.
-              </p>
-
-              <div className="olq-list">
-                {OLQ_HIGHLIGHTS.map((olq, i) => (
-                  <div key={i} className="olq-item">
-                    <CheckCircle2 size={18} className="olq-icon" />
-                    <div>
-                      <strong>{olq.title}</strong>
-                      <p>{olq.desc}</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-
-              <Link
-                to={isAuthenticated ? '/guide' : '/login'}
-                state={{ from: '/guide' }}
-                className="eval-cta"
-              >
-                Read Full Evaluation Guide & OLQs <ArrowRight size={16} />
-              </Link>
+        <section id="how-it-works" className="lp-process">
+          <div className="lp-container">
+            <p className="lp-eyebrow">MAKE EACH SESSION COUNT</p>
+            <h2>A simple rhythm for better practice.</h2>
+            <div className="lp-steps">
+              {[['01', 'Choose your test', 'Pick a format and read the briefing before the timer starts.'], ['02', 'Give it your attention', 'Respond to the pictures, words, or prompts in your own way.'], ['03', 'Learn from the feedback', 'Review your strengths and choose one thing to improve next time.']].map(([number, title, copy]) => <article key={number}><span>{number}</span><h3>{title}</h3><p>{copy}</p></article>)}
             </div>
-
-            <div className="eval-cards">
-              <div className="eval-feature-box red-flag-box">
-                <div className="feature-box-icon alert-icon">
-                  <ShieldAlert size={24} />
-                </div>
-                <div>
-                  <h3>Psychometric Red Flag Detection</h3>
-                  <p>
-                    Identify inadvertent aggressive themes, defeatist phrasing, lack of ethical responsibility, or antisocial behavior patterns before you meet the board psychologist.
-                  </p>
-                </div>
-              </div>
-
-              <div className="eval-feature-box timing-box">
-                <div className="feature-box-icon clock-icon">
-                  <Clock size={24} />
-                </div>
-                <div>
-                  <h3>Realistic Selection Board Pressure</h3>
-                  <p>
-                    Exact 15-second WAT intervals, 30-second PPDT picture observation periods, and 3.5-minute story writing sessions build automatic subconscious reflexes.
-                  </p>
-                </div>
-              </div>
-
-              <div className="eval-feature-box progress-box">
-                <div className="feature-box-icon stat-icon">
-                  <TrendingUp size={24} />
-                </div>
-                <div>
-                  <h3>Cumulative Progress Tracking</h3>
-                  <p>
-                    Observe your readiness scores develop over repeated sessions. Review past attempts with detailed psychological breakdowns and actionable guidance.
-                  </p>
-                </div>
-              </div>
-            </div>
+            <div className="lp-guide"><p>Want to understand the scoring? Explore the feedback criteria and Officer Like Qualities in the guide.</p><Link to={isAuthenticated ? '/guide' : '/login'} state={{ from: '/guide' }}>Evaluation Guide <ArrowRight size={17} /></Link></div>
           </div>
-        </div>
-      </section>
+        </section>
 
-      {/* How It Works */}
-      <section className="landing-section steps-section" id="how-it-works">
-        <div className="landing-container">
-          <div className="section-head">
-            <span className="eyebrow">Structured Process</span>
-            <h2>How ISSB Prep Works</h2>
-            <p>A proven preparation workflow designed to build mental discipline and narrative clarity.</p>
-          </div>
-
-          <div className="steps-grid">
-            <div className="step-card">
-              <span className="step-number">01</span>
-              <h3>Create Candidate Account</h3>
-              <p>Register as a candidate with your default Bangladeshi profile to keep all your sessions synchronized across devices.</p>
-            </div>
-
-            <div className="step-card">
-              <span className="step-number">02</span>
-              <h3>Practice Timed Tests</h3>
-              <p>Select any of the 5 psychological tests and experience authentic stimulus presentation and strict board timing.</p>
-            </div>
-
-            <div className="step-card">
-              <span className="step-number">03</span>
-              <h3>Review Instant AI Rubrics</h3>
-              <p>Receive comprehensive ratings across character construction, theme action, red flags, and dimensional OLQ scores.</p>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Final Call to Action */}
-      <section className="landing-cta-banner">
-        <div className="landing-container">
-          <div className="cta-box">
-            <h2>Ready to Begin Your ISSB Psychological Preparation?</h2>
-            <p>Join candidates training with timed simulations and objective psychometric assessment.</p>
-            <div className="cta-actions">
-              {isAuthenticated ? (
-                <Link to="/practice" className="landing-primary-btn">
-                  Open Practice Workspace <ArrowRight size={18} />
-                </Link>
-              ) : (
-                <>
-                  <Link to="/signup" state={{ from: '/practice' }} className="landing-primary-btn">
-                    Create Candidate Account <ArrowRight size={18} />
-                  </Link>
-                  <Link to="/login" state={{ from: '/practice' }} className="landing-secondary-btn light">
-                    Sign In to Account
-                  </Link>
-                </>
-              )}
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Footer */}
-      <footer className="landing-footer">
-        <div className="landing-container footer-inner">
-          <div className="footer-brand">
-            <span className="brand-mark logo">
-              <img src="/app-logo.png" alt="ISSB Prep logo" />
-            </span>
-            <strong>ISSB Prep</strong>
-            <p>AI-powered psychological test simulation and evaluation platform.</p>
-          </div>
-
-          <div className="footer-links">
-            <div>
-              <b>Tests</b>
-              <Link to={isAuthenticated ? '/practice/ppdt' : '/login'} state={{ from: '/practice/ppdt' }}>PPDT</Link>
-              <Link to={isAuthenticated ? '/practice/wat' : '/login'} state={{ from: '/practice/wat' }}>WAT</Link>
-              <Link to={isAuthenticated ? '/practice/tat' : '/login'} state={{ from: '/practice/tat' }}>TAT</Link>
-              <Link to={isAuthenticated ? '/practice/sdt' : '/login'} state={{ from: '/practice/sdt' }}>SDT</Link>
-              <Link to={isAuthenticated ? '/practice/sct' : '/login'} state={{ from: '/practice/sct' }}>SCT</Link>
-            </div>
-            <div>
-              <b>Resources</b>
-              <Link to={isAuthenticated ? '/guide' : '/login'} state={{ from: '/guide' }}>OLQ Evaluation Guide</Link>
-              <Link to={isAuthenticated ? '/' : '/login'} state={{ from: '/' }}>Candidate Portal</Link>
-              {!isAuthenticated && <Link to="/signup" state={{ from: '/' }}>Create Account</Link>}
-            </div>
-          </div>
-        </div>
-        <div className="footer-bottom">
-          <p>© {new Date().getFullYear()} ISSB Prep. Designed for defence psychological preparation and psychometric research.</p>
-        </div>
-      </footer>
+        <section className="lp-container lp-closing">
+          <div><p className="lp-eyebrow">YOUR NEXT STEP</p><h2>Make time for one focused session.</h2></div>
+          <Link to={practicePath} state={{ from: '/practice' }} className="lp-button">{isAuthenticated ? 'Continue practicing' : 'Create an account'}<ArrowRight size={18} /></Link>
+        </section>
+      </main>
+      <footer className="lp-footer lp-container"><span>© {new Date().getFullYear()} ISSB Prep</span><p>AI feedback supports practice and reflection; it is not an official selection result.</p></footer>
     </div>
   )
 }

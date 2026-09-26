@@ -184,7 +184,12 @@ const historyRequests = [
 export async function getAllHistory() {
   const settled = await Promise.allSettled(historyRequests.map(([, path]) => request(path)))
   const failures = settled.filter((result) => result.status === 'rejected')
-  if (failures.length === settled.length) throw failures[0].reason
+  const unauthorized = failures.find((result) => result.reason.status === 401)
+  if (unauthorized) throw unauthorized.reason
+  if (failures.length) {
+    const missing = settled.flatMap((result, index) => result.status === 'rejected' ? [historyRequests[index][0]] : [])
+    throw new Error(`Could not refresh ${missing.join(', ')} history. Please try again; previously loaded sessions have been kept.`)
+  }
   const items = []
   settled.forEach((result, index) => {
     if (result.status !== 'fulfilled') return

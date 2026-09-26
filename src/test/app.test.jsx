@@ -97,13 +97,13 @@ function renderAt(path, authenticated = false) {
 }
 
 afterEach(() => {
-  cleanup(); localStorage.clear(); vi.clearAllMocks()
+  cleanup(); localStorage.clear(); sessionStorage.clear(); vi.clearAllMocks()
 })
 
 describe('application routes', () => {
   it.each([
     ['/', 'Your readiness', true],
-    ['/landing', 'Master the ISSB Psychological Screening', false],
+    ['/landing', 'Prepare with focus.Progress with clarity.', false],
     ['/practice', 'Practice', true],
     ['/analytics', 'Psychological analytics', true],
     ['/history', 'Practice history', true],
@@ -117,7 +117,7 @@ describe('application routes', () => {
 
   it('renders landing page at root for unauthenticated visitors when guest mode is disabled', () => {
     renderAt('/', false)
-    expect(screen.getByRole('heading', { name: /Master the ISSB Psychological Screening/i })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: /Prepare with focus.Progress with clarity./i })).toBeInTheDocument()
   })
 
   it('protects live tests behind account sign-in', () => {
@@ -501,15 +501,15 @@ describe('analytics and evaluation guide features', () => {
 
   it('renders landing page with 5 core tests, OLQ rubrics, and action links', () => {
     renderAt('/landing', false)
-    expect(screen.getByRole('heading', { name: /Master the ISSB Psychological Screening/i })).toBeInTheDocument()
-    expect(screen.getByText('Picture Perception & Description Test')).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: /Prepare with focus.Progress with clarity./i })).toBeInTheDocument()
+    expect(screen.getByText('Picture Perception & Description')).toBeInTheDocument()
     expect(screen.getByText('Word Association Test')).toBeInTheDocument()
     expect(screen.getByText('Thematic Apperception Test')).toBeInTheDocument()
     expect(screen.getByText('Self Description Test')).toBeInTheDocument()
     expect(screen.getByText('Sentence Completion Test')).toBeInTheDocument()
-    expect(screen.getByText(/AI Psychometric Analysis Calibrated for Defence Boards/i)).toBeInTheDocument()
-    expect(screen.getByText(/Psychometric Red Flag Detection/i)).toBeInTheDocument()
-    expect(screen.getAllByRole('link', { name: /Start Free Practice|Create Candidate Account/i })[0]).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'A simple rhythm for better practice.' })).toBeInTheDocument()
+    expect(screen.getByText('Example')).toBeInTheDocument()
+    expect(screen.getAllByRole('link', { name: /Start practicing|Create an account/i })[0]).toBeInTheDocument()
   })
 
   it('does not mention deepseek anywhere in dashboard or analytics pages', async () => {
@@ -566,7 +566,7 @@ describe('analytics and evaluation guide features', () => {
       unmountGuide()
 
       const { unmount: unmountRoot } = renderAt('/', false)
-      expect(screen.getByRole('heading', { name: /Master the ISSB Psychological Screening/i })).toBeInTheDocument()
+      expect(screen.getByRole('heading', { name: /Prepare with focus.Progress with clarity./i })).toBeInTheDocument()
       unmountRoot()
     }
   })
@@ -589,7 +589,7 @@ describe('analytics and evaluation guide features', () => {
     const guideLinks = screen.getAllByRole('link', { name: /Evaluation Guide|Read OLQ Guide/i })
     expect(guideLinks[0]).toHaveAttribute('href', '/login')
 
-    const practiceBtns = screen.getAllByRole('link', { name: /Start Free Practice|Create Candidate Account/i })
-    expect(practiceBtns[0]).toHaveAttribute('href', '/login')
+    const practiceBtns = screen.getAllByRole('link', { name: /Start practicing|Create an account/i })
+    expect(practiceBtns[0]).toHaveAttribute('href', '/signup')
   })
 })

@@ -1,5 +1,6 @@
 import { AlertCircle, ArrowLeft, ArrowRight, Clock3, Eye, Lightbulb, LoaderCircle, Play, X } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
+import useSessionDraft from './useSessionDraft'
 import { practiceApi } from '../../services/liveApi'
 import { useApp } from '../../state/AppContext'
 import { SessionHeader, SessionResult, formatClock } from './SessionUI'
@@ -26,6 +27,17 @@ export default function PpdtSession({ test }) {
   const [error, setError] = useState('')
   const filled = useMemo(() => fields.filter((field) => answers[field.key].trim()).length, [answers])
   const canFinish = Boolean(answers.spot.trim() && answers.action.trim() && answers.story.trim())
+
+
+  const clearDraft = useSessionDraft(test.id, phase,
+    { phase, image, observeLeft, writeLeft, answers, activeField },
+    (saved) => {
+      if (!saved.image?.id || !saved.answers) return
+      setImage(saved.image); setObserveLeft(saved.observeLeft); setWriteLeft(saved.writeLeft)
+      setAnswers(saved.answers); setActiveField(saved.activeField || 0)
+      setPhase(['submitting', 'error'].includes(saved.phase) ? 'error' : saved.phase)
+      if (['submitting', 'error'].includes(saved.phase)) setError('Your answers were recovered. Check history before retrying if the previous submission may have completed.')
+    })
 
   useEffect(() => { if (phase !== 'observe') return; const timer = setInterval(() => setObserveLeft((value) => { if (value <= 1) { setTimeout(() => setPhase('write'), 0); return 0 } return value - 1 }), 1000); return () => clearInterval(timer) }, [phase])
   useEffect(() => { if (phase !== 'write') return; const timer = setInterval(() => setWriteLeft((value) => Math.max(0, value - 1)), 1000); return () => clearInterval(timer) }, [phase])
@@ -79,6 +91,7 @@ export default function PpdtSession({ test }) {
   }
 
   const restart = () => {
+    clearDraft()
     setPhase('setup')
     setObserveLeft(30)
     setWriteLeft(240)
@@ -107,11 +120,11 @@ export default function PpdtSession({ test }) {
     return (
       <div className="session-page">
         <SessionHeader test={test} phase="Live API error" />
-        <main className="error-panel">
+        <main className="error-panel" role="alert">
           <AlertCircle />
           <h2>Could not complete the live request</h2>
           <p>{error}</p>
-          <button className="primary-button" onClick={restart}>Return to setup</button>
+          {image && <><p>Your answers are preserved. If the request timed out, check history before retrying to avoid a duplicate attempt.</p><button className="primary-button" onClick={finish}>Retry submission</button><button className="secondary-button" onClick={() => setPhase('write')}>Review answers</button></>}<button className="secondary-button" onClick={restart}>Discard and return to setup</button>
         </main>
       </div>
     )
@@ -248,7 +261,7 @@ export default function PpdtSession({ test }) {
           <p className="eyebrow">{field.label}</p>
           <h2>{field.title}</h2>
           <p>{field.hint}</p>
-          <textarea
+          <textarea aria-label="Written response"
             autoFocus
             value={answers[field.key]}
             onChange={(event) => setAnswers({ ...answers, [field.key]: event.target.value })}

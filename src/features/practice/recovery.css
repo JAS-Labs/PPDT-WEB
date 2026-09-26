@@ -1,0 +1,11 @@
+.result-takeaways { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; margin: 28px 0; text-align: left; }
+.result-takeaways article { background: #f2f6f4; border: 1px solid #dce7e1; border-radius: 14px; padding: 18px; }
+.result-takeaways h3 { font-size: .9rem; margin: 0 0 10px; color: #234c3d; }
+.result-takeaways p { color: #475d54; font-size: .82rem; line-height: 1.7; margin: 0; }
+.error-panel button + button { margin-top: 12px; }
+:where(a, button, input, textarea, select, summary):focus-visible { outline: 3px solid #16796b; outline-offset: 4px; }
+.draft-note { color: #52675e; font-size: .75rem; line-height: 1.6; margin: 14px 0; }
+@media (max-width: 680px) { .result-takeaways { grid-template-columns: 1fr; } }
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; scroll-behavior: auto !important; }
+}

@@ -1,6 +1,7 @@
 import { AlertCircle, ArrowRight, Clock3, Eye, Lightbulb, LoaderCircle, Play } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { WRITING_PROMPTS } from '../../data/tests'
+import useSessionDraft from './useSessionDraft'
 import { practiceApi } from '../../services/liveApi'
 import { useApp } from '../../state/AppContext'
 import { SessionHeader, SessionResult, formatClock } from './SessionUI'
@@ -16,6 +17,17 @@ export default function TatSession({ test }) {
   const [showRefImage, setShowRefImage] = useState(false)
   const [result, setResult] = useState(null)
   const [error, setError] = useState('')
+
+
+  const clearDraft = useSessionDraft(test.id, phase,
+    { phase, image, observeLeft, writeLeft, story },
+    (saved) => {
+      if (!saved.image?.id || typeof saved.story !== 'string') return
+      setImage(saved.image); setObserveLeft(saved.observeLeft); setWriteLeft(saved.writeLeft)
+      setStory(saved.story)
+      setPhase(['submitting', 'error'].includes(saved.phase) ? 'error' : saved.phase)
+      if (['submitting', 'error'].includes(saved.phase)) setError('Your answers were recovered. Check history before retrying if the previous submission may have completed.')
+    })
 
   useEffect(() => { if (phase !== 'observe') return; const timer = setInterval(() => setObserveLeft((value) => { if (value <= 1) { setTimeout(() => setPhase('write'), 0); return 0 } return value - 1 }), 1000); return () => clearInterval(timer) }, [phase])
   useEffect(() => { if (phase !== 'write') return; const timer = setInterval(() => setWriteLeft((value) => Math.max(0, value - 1)), 1000); return () => clearInterval(timer) }, [phase])
@@ -60,6 +72,7 @@ export default function TatSession({ test }) {
   }
 
   const restart = () => {
+    clearDraft()
     setPhase('setup')
     setObserveLeft(30)
     setWriteLeft(240)
@@ -87,11 +100,11 @@ export default function TatSession({ test }) {
     return (
       <div className="session-page">
         <SessionHeader test={test} phase="Live API error" />
-        <main className="error-panel">
+        <main className="error-panel" role="alert">
           <AlertCircle />
           <h2>Could not complete the live request</h2>
           <p>{error}</p>
-          <button className="primary-button" onClick={restart}>Return to setup</button>
+          {image && <><p>Your answers are preserved. If the request timed out, check history before retrying to avoid a duplicate attempt.</p><button className="primary-button" onClick={finish}>Retry submission</button><button className="secondary-button" onClick={() => setPhase('write')}>Review answers</button></>}<button className="secondary-button" onClick={restart}>Discard and return to setup</button>
         </main>
       </div>
     )
@@ -219,7 +232,7 @@ export default function TatSession({ test }) {
             )}
           </div>
         )}
-        <textarea
+        <textarea aria-label="Your story"
           autoFocus
           value={story}
           onChange={(event) => setStory(event.target.value)}

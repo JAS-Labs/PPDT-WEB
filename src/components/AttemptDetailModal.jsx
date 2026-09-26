@@ -11,6 +11,7 @@ import {
   X,
 } from 'lucide-react'
 import OlqScoreSection, { getScoreBand } from './OlqScoreSection'
+import useDialogFocus from './useDialogFocus'
 
 function toList(val) {
   if (Array.isArray(val)) return val.filter(Boolean)
@@ -19,6 +20,7 @@ function toList(val) {
 }
 
 export default function AttemptDetailModal({ attempt, onClose, onOpenCommunity }) {
+  const dialogRef = useDialogFocus(onClose, Boolean(attempt))
   if (!attempt) return null
 
   const feedback = attempt.feedback || attempt.raw?.feedback || {}
@@ -60,7 +62,7 @@ export default function AttemptDetailModal({ attempt, onClose, onOpenCommunity }
   const type = (attempt.type || '').toUpperCase()
 
   return (
-    <div className="modal-overlay" onClick={onClose} role="dialog" aria-modal="true">
+    <div className="modal-overlay" ref={dialogRef} tabIndex={-1} onClick={onClose} role="dialog" aria-modal="true" aria-label="Practice attempt details">
       <div className="modal-container attempt-modal" onClick={(e) => e.stopPropagation()}>
         <div className="modal-header">
           <div className="modal-title-wrap">

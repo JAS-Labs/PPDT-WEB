@@ -2,8 +2,10 @@ import { useEffect, useState } from 'react'
 import { AlertCircle, LoaderCircle, Users, X, Award } from 'lucide-react'
 import { practiceApi } from '../services/liveApi'
 import { getScoreBand } from './OlqScoreSection'
+import useDialogFocus from './useDialogFocus'
 
 export default function CommunityResponsesModal({ imageId, testType = 'ppdt', onClose }) {
+  const dialogRef = useDialogFocus(onClose)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [responses, setResponses] = useState([])
@@ -40,7 +42,7 @@ export default function CommunityResponsesModal({ imageId, testType = 'ppdt', on
     : null
 
   return (
-    <div className="modal-overlay" onClick={onClose} role="dialog" aria-modal="true">
+    <div className="modal-overlay" ref={dialogRef} tabIndex={-1} onClick={onClose} role="dialog" aria-modal="true" aria-label="Community responses">
       <div className="modal-container community-modal" onClick={(e) => e.stopPropagation()}>
         <div className="modal-header">
           <div className="modal-title-wrap">

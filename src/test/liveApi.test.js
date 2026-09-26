@@ -13,6 +13,20 @@ afterEach(() => {
 })
 
 describe('production API contract', () => {
+  it('does not report incomplete history as a successful refresh', async () => {
+    fetch.mockImplementation((url) => url.includes('/wat/history')
+      ? Promise.resolve({ ok: false, status: 503, json: async () => ({ detail: 'Unavailable' }) })
+      : ok([]))
+    await expect(getAllHistory()).rejects.toThrow('Could not refresh WAT history')
+  })
+
+  it('propagates expired authentication even when another history endpoint succeeds', async () => {
+    fetch.mockImplementation((url) => url.includes('/wat/history')
+      ? Promise.resolve({ ok: false, status: 401, json: async () => ({ detail: 'Expired' }) })
+      : ok([]))
+    await expect(getAllHistory()).rejects.toMatchObject({ status: 401 })
+  })
+
   it('keeps the production base URL and uses the dev proxy locally', () => {
     expect(LIVE_API_URL).toBe('https://issb-ppdt-api.icyglacier-8bd82619.centralindia.azurecontainerapps.io/api/v1')
     expect(API_BASE_URL).toBe('/api/v1')
