@@ -1,4 +1,4 @@
-import { ArrowLeft, BookOpen, Clock3, TrendingUp, LoaderCircle, UserPlus, LogIn } from 'lucide-react'
+import { ArrowLeft, BookOpen, Clock3, TrendingUp, LoaderCircle, UserPlus, LogIn, Eye, EyeOff } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { authApi } from '../services/liveApi'
@@ -257,9 +257,11 @@ export default function LoginPage({ initialMode }) {
             />
           </label>
 
-          <label>
-            Password
+          <div className="auth-password-group">
+            <label htmlFor="auth-password">Password</label>
+            <div className="auth-password-field">
             <input
+              id="auth-password"
               type={showPassword ? 'text' : 'password'}
               autoComplete={mode === 'signup' ? 'new-password' : 'current-password'}
               value={form.password}
@@ -269,12 +271,13 @@ export default function LoginPage({ initialMode }) {
               maxLength={128}
               required
             />
-          </label>
-
           <button type="button" className="password-visibility" aria-pressed={showPassword}
+            aria-label={showPassword ? 'Hide password' : 'Show password'}
             onClick={() => setShowPassword((visible) => !visible)}>
-            {showPassword ? 'Hide password' : 'Show password'}
+            {showPassword ? <EyeOff size={18} aria-hidden="true" /> : <Eye size={18} aria-hidden="true" />}
           </button>
+            </div>
+          </div>
           {mode === 'signup' && <p className="auth-account-note">Use at least 8 characters. Avoid reusing a password from another account.</p>}
 
           {mode === 'signup' && (

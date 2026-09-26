@@ -1,8 +1,8 @@
 .practice-clean { max-width: 1120px; }
-.practice-clean .practice-heading { padding: 12px 0 32px; }
+.practice-clean .practice-heading { padding: 0 0 18px; }
 .practice-clean .practice-kicker { color: #2563eb; font-size: .68rem; font-weight: 800; letter-spacing: .12em; margin: 0 0 14px; }
-.practice-clean .practice-heading h2 { color: var(--ink); font-size: clamp(1.8rem, 3vw, 2.5rem); letter-spacing: -.045em; line-height: 1.2; margin: 0 0 14px; }
-.practice-clean .practice-heading > p:not(.practice-kicker) { color: var(--muted); font-size: .9rem; line-height: 1.7; margin: 0 0 18px; }
+.practice-clean .practice-heading h2 { color: var(--ink); font-size: 1.25rem; letter-spacing: -.025em; line-height: 1.3; margin: 0 0 6px; }
+.practice-clean .practice-heading > p:not(.practice-kicker) { color: var(--muted); font-size: .85rem; line-height: 1.6; margin: 0 0 10px; }
 .practice-clean .practice-note { display: flex; align-items: center; gap: 8px; color: #64748b; font-size: .74rem; line-height: 1.6; }
 .practice-clean .practice-library { background: #fff; border: 1px solid var(--line); border-radius: 18px; overflow: hidden; }
 .practice-clean .practice-library > header { padding: 24px 28px; display: flex; align-items: center; justify-content: space-between; gap: 16px; }

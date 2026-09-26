@@ -7,9 +7,8 @@ export default function PracticePage() {
   return (
     <div className="page practice-page practice-clean">
       <section className="practice-heading">
-        <p className="practice-kicker">PRACTICE WORKSPACE</p>
-        <h2>One session. One step forward.</h2>
-        <p>Choose a test, settle into a focused session, then learn from your feedback.</p>
+        <h2>Choose your next test.</h2>
+        <p>Practice at your pace, then review your feedback.</p>
         <span className="practice-note"><Clock3 size={15} aria-hidden="true" /> Set your pace before you begin · Drafts saved automatically</span>
       </section>
       <section className="practice-library" aria-labelledby="practice-library-title">
