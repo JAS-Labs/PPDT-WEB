@@ -22,7 +22,6 @@ export default function PpdtSession({ test }) {
   const [activeField, setActiveField] = useState(0)
   const [answers, setAnswers] = useState(empty)
   const [image, setImage] = useState(null)
-  const [showRefImage, setShowRefImage] = useState(false)
   const [result, setResult] = useState(null)
   const [error, setError] = useState('')
   const filled = useMemo(() => fields.filter((field) => answers[field.key].trim()).length, [answers])
@@ -98,7 +97,6 @@ export default function PpdtSession({ test }) {
     setActiveField(0)
     setAnswers(empty)
     setImage(null)
-    setShowRefImage(false)
     setResult(null)
     setError('')
   }
@@ -238,23 +236,6 @@ export default function PpdtSession({ test }) {
               </div>
             </button>
           ))}
-          {image?.url && (
-            <div className="sidebar-ref-box">
-              <button
-                type="button"
-                className={`ref-toggle-btn ${showRefImage ? 'active' : ''}`}
-                onClick={() => setShowRefImage((prev) => !prev)}
-                title="Toggle reference image"
-              >
-                <Eye size={14} /> {showRefImage ? 'Hide picture' : 'View picture'}
-              </button>
-              {showRefImage && (
-                <div className="ref-image-popover">
-                  <img src={image.url} alt="Reference assessment scene" />
-                </div>
-              )}
-            </div>
-          )}
         </aside>
 
         <section className="response-editor">

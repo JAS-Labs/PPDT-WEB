@@ -14,7 +14,6 @@ export default function TatSession({ test }) {
   const [writeLeft, setWriteLeft] = useState(240)
   const [story, setStory] = useState('')
   const [image, setImage] = useState(null)
-  const [showRefImage, setShowRefImage] = useState(false)
   const [result, setResult] = useState(null)
   const [error, setError] = useState('')
 
@@ -78,7 +77,6 @@ export default function TatSession({ test }) {
     setWriteLeft(240)
     setStory('')
     setImage(null)
-    setShowRefImage(false)
     setResult(null)
     setError('')
   }
@@ -216,22 +214,6 @@ export default function TatSession({ test }) {
           <span>What does the hero do?</span>
           <span>What is the outcome?</span>
         </div>
-        {image?.url && (
-          <div className="tat-ref-bar">
-            <button
-              type="button"
-              className={`ref-toggle-btn ${showRefImage ? 'active' : ''}`}
-              onClick={() => setShowRefImage((prev) => !prev)}
-            >
-              <Eye size={14} /> {showRefImage ? 'Hide reference picture' : 'View reference picture'}
-            </button>
-            {showRefImage && (
-              <div className="tat-ref-preview">
-                <img src={image.url} alt="TAT reference scene" />
-              </div>
-            )}
-          </div>
-        )}
         <textarea aria-label="Your story"
           autoFocus
           value={story}

@@ -198,11 +198,9 @@ describe('live practice integrations', () => {
     await user.click(screen.getByRole('button', { name: /skip to writing/i }))
     expect(screen.getByRole('heading', { name: 'Who and what do you notice?' })).toBeInTheDocument()
 
-    // Test toggle of reference picture
-    await user.click(screen.getByRole('button', { name: /view picture/i }))
-    expect(screen.getByAltText('Reference assessment scene')).toBeInTheDocument()
-    await user.click(screen.getByRole('button', { name: /hide picture/i }))
-    expect(screen.queryByAltText('Reference assessment scene')).not.toBeInTheDocument()
+    // Image should NOT be visible during the writing phase (only visible during observation)
+    expect(screen.queryByRole('img', { name: /live ppdt/i })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /view picture/i })).not.toBeInTheDocument()
 
     // Fill Spot section
     await user.type(screen.getByPlaceholderText(/write your spot response/i), 'Two relief workers evaluating a flood scene.')
@@ -255,6 +253,9 @@ describe('live practice integrations', () => {
     expect(practiceApi.getTatImage).toHaveBeenCalledOnce()
     await user.click(screen.getByRole('button', { name: /skip to writing/i }))
     expect(screen.getByRole('heading', { name: /build the complete story/i })).toBeInTheDocument()
+    // Image should NOT be visible during the writing phase (only visible during observation)
+    expect(screen.queryByRole('img', { name: /live tat/i })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /view reference picture/i })).not.toBeInTheDocument()
   })
 
   it('loads every SDT perspective from the API', async () => {
