@@ -16,6 +16,16 @@
   background: var(--bg);
 }
 html { scrollbar-gutter: stable; }
+.workspace-skip { position: fixed; top: -80px; left: 16px; z-index: 120; background: #fff; color: #0f172a; padding: 14px; border-radius: 8px; }
+.workspace-skip:focus { top: 8px; }
+.workspace-history-notice { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; padding: 16px; margin-bottom: 20px; background: #fffbeb; border: 1px solid #fcd34d; border-radius: 12px; color: #78350f; font-size: .85rem; }
+@media (min-width: 681px) {
+  .compact-workspace .main-content { padding-top: 20px; }
+  .compact-workspace .topbar { margin-bottom: 20px; }
+  .compact-workspace :is(.surface, .test-card, .stat-card) { padding: 16px; }
+  .compact-workspace .practice-choice { padding-block: 16px; }
+  .compact-workspace .section-header { margin-top: 22px; }
+}
 .connection-notice { position: sticky; top: 0; z-index: 110; padding: 12px 24px; background: #fffbeb; border-bottom: 1px solid #fcd34d; color: #78350f; font-size: .85rem; line-height: 1.5; }
 .auth-refresh .password-visibility { background: transparent; border: 0; color: #1d4ed8; padding: 8px 0; min-height: 44px; font-size: .78rem; }
 .auth-refresh .auth-account-note { font-size: .74rem; color: var(--muted); line-height: 1.6; margin: 0 0 12px; }
@@ -80,6 +90,9 @@ button:disabled { cursor: not-allowed; opacity: .65; }
   .profile-test-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 }
 @media (max-width: 680px) {
+  .mobile-nav { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+  .mobile-nav .nav-link { min-height: 48px; }
+  .mobile-nav .nav-link span { display: block; }
   .profile-test-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .profile-test-card-top { flex-wrap: wrap; }
   .app-shell .practice-intro { padding: 24px 20px; align-items: flex-start; }

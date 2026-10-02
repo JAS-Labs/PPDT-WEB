@@ -15,6 +15,8 @@
 .dashboard-page .plan-list { gap: 14px; margin: 20px 0; }
 .dashboard-page .today-panel > a { padding-top: 14px; }
 .dashboard-page .orb { display: none; }
+.dashboard-page .performance-stack { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.dashboard-page .performance-stack > div { min-width: 0; padding: 14px; }
 @media (max-width: 980px) {
   .dashboard-page .web-dashboard-grid { grid-template-columns: minmax(0, 1fr); }
 }

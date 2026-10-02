@@ -44,6 +44,7 @@ export default function AnalyticsPage() {
   const [judgeReport, setJudgeReport] = useState(null)
   const [judgeLoading, setJudgeLoading] = useState(false)
   const [judgeNotice, setJudgeNotice] = useState('')
+  const [noticeDismissed, setNoticeDismissed] = useState(false)
 
   // Benchmark averages state
   const [averages, setAverages] = useState([])
@@ -62,9 +63,10 @@ export default function AnalyticsPage() {
   const loadJudge = useCallback(async (reEvaluate = false) => {
     setJudgeLoading(true)
     setJudgeNotice('')
+    setNoticeDismissed(false)
     try {
       const data = await analyticsApi.getOverallJudge(reEvaluate)
-      if (data && (data.overall_readiness_score > 0 || (data.key_strengths_across_tests && data.key_strengths_across_tests.length > 0))) {
+      if (data && data.overall_readiness_score != null && data.overall_readiness_score !== '' && Number.isFinite(Number(data.overall_readiness_score))) {
         setJudgeReport({ ...data, source: 'cloud_ai' })
         setJudgeNotice('')
         return
@@ -129,6 +131,7 @@ export default function AnalyticsPage() {
       await refreshHistory()
     } catch {}
     await loadJudge(false)
+    await loadAverages()
   }
 
   // Percentile check submit
@@ -310,7 +313,7 @@ export default function AnalyticsPage() {
         </div>
 
         {/* Polite status notice banner when cloud AI is unreachable */}
-        {(judgeNotice || judgeReport?.source === 'client_synthesis') && !judgeLoading && (
+        {(judgeNotice || judgeReport?.source === 'client_synthesis') && !judgeLoading && !noticeDismissed && (
           <div className="judge-notice-banner" role="status">
             <Info size={16} className="notice-icon" />
             <span>{judgeNotice || 'Remote AI Judge is currently unreachable. Displaying local psychometric synthesis from your practice history.'}</span>
@@ -326,7 +329,8 @@ export default function AnalyticsPage() {
               <button
                 type="button"
                 className="notice-dismiss-btn"
-                onClick={() => setJudgeNotice('')}
+                onClick={() => setNoticeDismissed(true)}
+                aria-label="Dismiss assessment notice"
                 title="Dismiss notice"
               >
                 <X size={14} />

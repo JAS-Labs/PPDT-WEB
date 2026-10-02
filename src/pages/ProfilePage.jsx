@@ -19,8 +19,8 @@ import { useApp } from '../state/AppContext'
 import { TESTS } from '../data/tests'
 
 const options = [
-  { key: 'reminders', title: 'Daily practice reminder', detail: 'Stay consistent with one short session.', icon: BellRing },
-  { key: 'sounds', title: 'Timer sounds', detail: 'Play an audio cue when each prompt changes.', icon: Volume2 },
+  { key: 'reminders', title: 'Daily practice reminder', detail: 'Not available in the web version yet.', icon: BellRing, unavailable: true },
+  { key: 'sounds', title: 'Timer sounds', detail: 'Not available in the web version yet.', icon: Volume2, unavailable: true },
   { key: 'compact', title: 'Compact mode', detail: 'Fit more information on larger screens.', icon: Rows3 },
 ]
 
@@ -48,11 +48,8 @@ export default function ProfilePage() {
   }, [history])
 
   const handleLogout = async () => {
-    try {
-      await authApi.logout()
-    } catch {
-      // ignore network failure on logout
-    }
+    // Start server logout with the current token, but clear local access immediately.
+    void authApi.logout().catch(() => {})
     try { localStorage.removeItem('issb-token') } catch {}
     if (setToken) setToken(null)
     saveProfile({ name: 'Candidate', email: '', nationality: 'Bangladeshi', verified: false, mode: 'candidate' })
@@ -200,7 +197,7 @@ export default function ProfilePage() {
 
         {/* Settings List */}
         <div className="settings-list">
-          {options.map(({ key, title, detail, icon: Icon }) => (
+          {options.map(({ key, title, detail, icon: Icon, unavailable }) => (
             <div className="setting-row" key={key}>
               <span className="setting-icon"><Icon size={19} /></span>
               <div>
@@ -208,10 +205,11 @@ export default function ProfilePage() {
                 <small>{detail}</small>
               </div>
               <button
-                className={`switch ${settings[key] ? 'on' : ''}`}
+                className={`switch ${!unavailable && settings[key] ? 'on' : ''}`}
+                disabled={unavailable}
                 onClick={() => updateSettings(key)}
                 aria-label={`Toggle ${title}`}
-                aria-pressed={settings[key]}
+                aria-pressed={!unavailable && settings[key]}
               >
                 <span />
               </button>

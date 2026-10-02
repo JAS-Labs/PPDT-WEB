@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react'
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
 import { getAllHistory } from '../services/liveApi'
 
 const AppContext = createContext(null)
@@ -41,6 +41,7 @@ export function AppProvider({ children }) {
   const [history, setHistory] = useState([])
   const [historyLoading, setHistoryLoading] = useState(false)
   const [historyError, setHistoryError] = useState('')
+  const historyRequest = useRef(0)
   const [settings, setSettings] = useState(() => read('issb-settings', { reminders: true, sounds: true, compact: false }))
 
   const saveProfile = (next) => {
@@ -55,11 +56,16 @@ export function AppProvider({ children }) {
   }
   const addAttempt = (attempt) => setHistory((current) => [{ id: attempt.id || crypto.randomUUID(), date: new Date().toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }), status: 'Completed', ...attempt }, ...current.filter((item) => item.id !== attempt.id)])
   const refreshHistory = useCallback(async () => {
-    if (!readStoredToken()) { setHistory([]); return }
+    const requestId = ++historyRequest.current
+    const requestToken = readStoredToken()
+    if (!requestToken) { setHistory([]); setHistoryLoading(false); return }
+    const isCurrent = () => requestId === historyRequest.current && readStoredToken() === requestToken
     setHistoryLoading(true); setHistoryError('')
     try {
-      setHistory(await getAllHistory())
+      const nextHistory = await getAllHistory()
+      if (isCurrent()) setHistory(nextHistory)
     } catch (error) {
+      if (!isCurrent()) return
       if (error.status === 401) {
         try { localStorage.removeItem('issb-token') } catch {}
         setToken(null)
@@ -68,12 +74,14 @@ export function AppProvider({ children }) {
       }
       setHistoryError(error.message)
     } finally {
-      setHistoryLoading(false)
+      if (requestId === historyRequest.current) setHistoryLoading(false)
     }
   }, [])
 
   useEffect(() => {
     const onAuthExpired = () => {
+      historyRequest.current += 1
+      setHistoryLoading(false)
       try { localStorage.removeItem('issb-token') } catch {}
       setToken(null)
       saveProfile({ name: 'Candidate', email: '', nationality: 'Bangladeshi', verified: false, mode: 'candidate' })
@@ -87,8 +95,12 @@ export function AppProvider({ children }) {
   useEffect(() => {
     const onStorage = (event) => {
       if (event.key === 'issb-token') {
+        historyRequest.current += 1
         const nextToken = readStoredToken()
         setToken(nextToken)
+        setHistory([])
+        setHistoryError('')
+        setHistoryLoading(false)
         if (!nextToken) {
           saveProfile({ name: 'Candidate', email: '', nationality: 'Bangladeshi', verified: false, mode: 'candidate' })
           setHistory([])
@@ -99,7 +111,7 @@ export function AppProvider({ children }) {
     return () => window.removeEventListener('storage', onStorage)
   }, [])
 
-  useEffect(() => { refreshHistory() }, [refreshHistory])
+  useEffect(() => { refreshHistory() }, [refreshHistory, token])
   const updateSettings = (key) => {
     const next = { ...settings, [key]: !settings[key] }
     setSettings(next); localStorage.setItem('issb-settings', JSON.stringify(next))

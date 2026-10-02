@@ -101,6 +101,30 @@ afterEach(() => {
 })
 
 describe('application routes', () => {
+  it('applies compact mode and marks unimplemented preferences unavailable', async () => {
+    const { container } = renderAt('/profile', true)
+    expect(screen.getByRole('button', { name: 'Toggle Daily practice reminder' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'Toggle Timer sounds' })).toBeDisabled()
+    await userEvent.click(screen.getByRole('button', { name: 'Toggle Compact mode' }))
+    expect(container.querySelector('.app-shell')).toHaveClass('compact-workspace')
+  })
+
+  it('signs out locally without waiting for an unresponsive server', async () => {
+    authApi.logout.mockImplementationOnce(() => new Promise(() => {}))
+    renderAt('/profile', true)
+    await userEvent.click(screen.getByRole('button', { name: /Sign out/i }))
+    expect(await screen.findByRole('heading', { name: 'Sign in to continue' })).toBeInTheDocument()
+    expect(localStorage.getItem('issb-token')).toBeNull()
+  })
+
+  it('explains an empty history filter and exposes its selected state', async () => {
+    renderAt('/history', true)
+    await screen.findByRole('button', { name: 'View evaluation details' })
+    const filter = screen.getByRole('button', { name: /^WAT\s*0$/ })
+    await userEvent.click(filter)
+    expect(filter).toHaveAttribute('aria-pressed', 'true')
+    expect(screen.getByText(/No WAT sessions yet/)).toBeInTheDocument()
+  })
   it.skipIf(!process.env.PPDT_UI_SNAPSHOTS)('exports inert UI-review snapshots with mocked account data', async () => {
     const { mkdirSync, writeFileSync } = await import('node:fs')
     mkdirSync('public/__ui_review', { recursive: true })
@@ -111,6 +135,12 @@ describe('application routes', () => {
       if (name === 'analytics') {
         await userEvent.click(await screen.findByRole('tab', { name: 'Dual View' }))
         await userEvent.click(screen.getByText('Compare with candidate benchmarks'))
+      }
+      if (name === 'dashboard') {
+        const stylesheet = document.createElement('link')
+        stylesheet.rel = 'stylesheet'
+        stylesheet.href = '/src/pages/dashboard.css'
+        document.body.appendChild(stylesheet)
       }
       writeFileSync(`public/__ui_review/${name}.html`, `<!doctype html><html><head><meta name="viewport" content="width=device-width,initial-scale=1"><link rel="stylesheet" href="/src/styles.css"><link rel="stylesheet" href="/src/ui-theme.css"><link rel="stylesheet" href="/src/features/practice/recovery.css"><link rel="stylesheet" href="/src/pages/practice.css"><link rel="stylesheet" href="/src/pages/analytics.css"><link rel="stylesheet" href="/src/components/olq-layout.css"><style>.page{animation:none}</style><title>UI review — ${name}</title></head><body><aside style="padding:8px;background:#eff6ff;color:#1e3a5f">Automated UI review · sample data · controls inactive</aside>${document.body.innerHTML}</body></html>`)
       cleanup(); localStorage.clear()
@@ -300,6 +330,25 @@ describe('live practice integrations', () => {
 })
 
 describe('analytics and evaluation guide features', () => {
+  it('preserves a valid zero-score cloud assessment', async () => {
+    analyticsApi.getOverallJudge.mockResolvedValueOnce({
+      overall_readiness_score: 0,
+      estimated_issb_readiness: 'Not enough valid responses',
+      personality_profile_summary: 'Complete a valid test response before reviewing your profile.',
+      key_strengths_across_tests: [],
+    })
+    renderAt('/analytics', true)
+    expect(await screen.findByText('Not enough valid responses')).toBeInTheDocument()
+    expect(screen.getByText('Cloud Psychometric Model')).toBeInTheDocument()
+  })
+
+  it('lets the user dismiss a local assessment notice', async () => {
+    analyticsApi.getOverallJudge.mockRejectedValueOnce(new Error('Unavailable'))
+    renderAt('/analytics', true)
+    await userEvent.click(await screen.findByRole('button', { name: 'Dismiss assessment notice' }))
+    expect(screen.queryByRole('button', { name: 'Dismiss assessment notice' })).not.toBeInTheDocument()
+    expect(screen.getByText(/Local Psychometric Engine/)).toBeInTheDocument()
+  })
   it('renders long readiness feedback as body text without truncating it', async () => {
     const assessment = 'Very low readiness - no valid data across any test, fundamental understanding of test formats and requirements is absent. Immediate and structured practice is needed.'
     analyticsApi.getOverallJudge.mockResolvedValueOnce({

@@ -141,6 +141,7 @@ export default function HistoryPage() {
             <button
               key={tab}
               className={`filter-chip ${activeFilter === tab ? 'active' : ''}`}
+              aria-pressed={activeFilter === tab}
               onClick={() => setActiveFilter(tab)}
             >
               <span>{tab}</span>
@@ -180,6 +181,9 @@ export default function HistoryPage() {
               </tr>
             </thead>
             <tbody>
+              {filteredHistory.length === 0 && (
+                <tr><td colSpan={6}>No {activeFilter} sessions yet. Choose another filter or start a practice test.</td></tr>
+              )}
               {filteredHistory.map((item) => {
                 const numScore = Number(item.score) || 0
                 const band = getScoreBand(numScore)

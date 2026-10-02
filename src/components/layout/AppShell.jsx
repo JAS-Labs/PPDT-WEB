@@ -32,6 +32,7 @@ function Navigation({ mobile = false }) {
         <NavLink
           key={to}
           to={to}
+          aria-label={label}
           end={to === '/'}
           className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}
         >
@@ -44,7 +45,7 @@ function Navigation({ mobile = false }) {
 }
 
 export default function AppShell() {
-  const { profile } = useApp()
+  const { profile, settings, historyError, historyLoading, refreshHistory } = useApp()
   const location = useLocation()
   const isSession = location.pathname.startsWith('/practice/')
   const title = isSession ? 'Practice session' : titles[location.pathname] ?? 'ISSB Prep'
@@ -53,7 +54,8 @@ export default function AppShell() {
   const initial = profile.name?.trim()?.[0]?.toUpperCase() || 'S'
 
   return (
-    <div className="app-shell">
+    <div className={`app-shell${settings.compact ? ' compact-workspace' : ''}`}>
+      <a className="workspace-skip" href="#workspace-content">Skip to content</a>
       <aside className="sidebar">
         <NavLink to="/" className="brand">
           <span className="brand-mark logo">
@@ -75,7 +77,7 @@ export default function AppShell() {
         </div>
       </aside>
 
-      <main className="main-content">
+      <main className="main-content" id="workspace-content" tabIndex={-1}>
         {!isSession && (
           <header className="topbar">
             <div>
@@ -91,12 +93,18 @@ export default function AppShell() {
               <NavLink to="/practice" className="header-practice">
                 Start practice <ArrowRight size={16} />
               </NavLink>
-              <NavLink to="/profile" className="profile-chip">
+              <NavLink to="/profile" className="profile-chip" aria-label="Your profile">
                 <span className="avatar">{initial}</span>
                 <span>{profile.name}</span>
               </NavLink>
             </div>
           </header>
+        )}
+        {!isSession && location.pathname !== '/history' && historyError && (
+          <div className="workspace-history-notice" role="alert">
+            <span>{historyError}</span>
+            <button className="secondary-button" onClick={refreshHistory} disabled={historyLoading}>Retry history</button>
+          </div>
         )}
         <Outlet />
       </main>

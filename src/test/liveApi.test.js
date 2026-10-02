@@ -13,6 +13,25 @@ afterEach(() => {
 })
 
 describe('production API contract', () => {
+  it('rejects malformed successful responses instead of treating them as saved submissions', async () => {
+    fetch.mockResolvedValueOnce({ ok: true, status: 200, json: async () => { throw new SyntaxError('Invalid JSON') } })
+    await expect(practiceApi.submitPpdt({ story_text: 'Response' })).rejects.toThrow('unreadable response')
+  })
+
+  it('does not expire a newer login when an old request returns 401', async () => {
+    let resolveFetch
+    fetch.mockImplementationOnce(() => new Promise((resolve) => { resolveFetch = resolve }))
+    const pending = authApi.profile()
+    localStorage.setItem('issb-token', 'new-account-token')
+    resolveFetch({ ok: false, status: 401, json: async () => ({ detail: 'Expired old session' }) })
+    await expect(pending).rejects.toMatchObject({ status: 401 })
+    expect(localStorage.getItem('issb-token')).toBe('new-account-token')
+  })
+
+  it('accepts a no-content response for logout', async () => {
+    fetch.mockResolvedValueOnce({ ok: true, status: 204 })
+    await expect(authApi.logout()).resolves.toEqual({})
+  })
   it('times out evaluation without automatically repeating the submission', async () => {
     vi.useFakeTimers()
     try {

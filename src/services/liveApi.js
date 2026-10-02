@@ -108,7 +108,10 @@ async function performRequest(path, options = {}) {
     throw error
   }
 
-  const data = await response.json().catch(() => ({}))
+  const data = response.status === 204 ? {} : await response.json().catch(() => {
+    if (!response.ok) return {}
+    throw new Error('The service returned an unreadable response. Please check your history before retrying a submission.')
+  })
   if (!response.ok) {
     let message = data.detail || data.error || 'The live service could not complete this request.'
     if (Array.isArray(message)) {
@@ -129,7 +132,7 @@ async function performRequest(path, options = {}) {
       message = 'The API endpoint was not found (HTTP 404). Please ensure the reverse proxy rewrite is configured on your web host.'
     }
 
-    if (response.status === 401 && typeof window !== 'undefined') {
+    if (response.status === 401 && authToken && token() === authToken && typeof window !== 'undefined') {
       localStorage.removeItem('issb-token')
       window.dispatchEvent(new CustomEvent('issb-auth-expired', { detail: { path, status: 401 } }))
     }
