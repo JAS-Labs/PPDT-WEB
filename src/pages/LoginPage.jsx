@@ -32,13 +32,43 @@ export default function LoginPage({ initialMode }) {
     password: '',
     age: '21',
     nationality: 'Bangladeshi',
-    research_consent: true,
+    research_consent: false,
   })
   const [error, setError] = useState('')
   const [termsAccepted, setTermsAccepted] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
   const [loading, setLoading] = useState(false)
   const [slowLoading, setSlowLoading] = useState(false)
+  const [policies, setPolicies] = useState(null)
+  const [policiesLoading, setPoliciesLoading] = useState(false)
+  const [policiesError, setPoliciesError] = useState('')
+  const [policyReload, setPolicyReload] = useState(0)
+
+  useEffect(() => {
+    if (mode !== 'signup') return
+    let active = true
+    setPoliciesLoading(true)
+    setPoliciesError('')
+    setTermsAccepted(false)
+    setForm((current) => ({ ...current, research_consent: false }))
+    authApi.policies().then((catalog) => {
+      if (!active) return
+      if (!catalog || !Array.isArray(catalog.policies) || (catalog.enforced && !catalog.ready)) {
+        throw new Error('Current approved policies are unavailable.')
+      }
+      setPolicies(catalog)
+    }).catch((err) => {
+      if (!active) return
+      if (err.status === 404) {
+        // An older backend has no versioned contract. Never invent versions.
+        setPolicies({ enforced: false, ready: false, policies: [] })
+      } else {
+        setPolicies(null)
+        setPoliciesError('Policies could not be loaded. Please reload them before registering.')
+      }
+    }).finally(() => { if (active) setPoliciesLoading(false) })
+    return () => { active = false }
+  }, [mode, policyReload])
 
   useEffect(() => {
     let timer
@@ -75,6 +105,10 @@ export default function LoginPage({ initialMode }) {
     try {
       let result
       if (mode === 'signup') {
+        if (policiesLoading || !policies || policiesError) {
+          setError('Please load the current policies before creating your account.')
+          return
+        }
         const name = form.name.trim()
         if (!name) {
           setError('Please enter your full name.')
@@ -131,6 +165,11 @@ export default function LoginPage({ initialMode }) {
           age: ageNum,
           nationality,
           research_consent: Boolean(form.research_consent),
+          ...(policies.ready ? {
+            terms_accepted: termsAccepted,
+            privacy_acknowledged: termsAccepted,
+            ...Object.fromEntries(policies.policies.map((document) => [`${document.document_type}_version`, document.version])),
+          } : {}),
         })
       } else {
         if (!password) {
@@ -169,6 +208,11 @@ export default function LoginPage({ initialMode }) {
 
       navigate(location.state?.from || '/')
     } catch (err) {
+      if (mode === 'signup' && err.status === 409) {
+        setTermsAccepted(false)
+        setForm((current) => ({ ...current, research_consent: false }))
+        setPolicyReload((current) => current + 1)
+      }
       let msg = err.message
       if (!msg || msg === 'Failed to fetch' || err.name === 'TypeError') {
         msg = 'Unable to connect to the authentication server. Please wait a moment and try again.'
@@ -312,6 +356,7 @@ export default function LoginPage({ initialMode }) {
                 <input
                   type="checkbox"
                   checked={form.research_consent}
+                  disabled={policiesLoading || Boolean(policiesError)}
                   onChange={(e) => setForm({ ...form, research_consent: e.target.checked })}
                   required
                 />
@@ -321,16 +366,29 @@ export default function LoginPage({ initialMode }) {
                 <input
                   type="checkbox"
                   checked={termsAccepted}
+                  disabled={policiesLoading || Boolean(policiesError)}
                   onChange={(e) => setTermsAccepted(e.target.checked)}
                   required
                 />
-                <span>I accept the Terms and Conditions below.</span>
+                <span>{policies?.ready ? 'I accept the Terms and Conditions and acknowledge the Privacy Notice below.' : 'I accept the Terms and Conditions below.'}</span>
               </label>
               <details className="auth-terms">
                 <summary>Read Terms and Conditions</summary>
-                <p>ISSB Prep is a practice tool. Its feedback is for preparation only, is not an official ISSB assessment, and does not guarantee selection.</p>
-                <p>Keep your account credentials private, provide accurate profile details, and use the service responsibly. Your practice responses are sent to the service to generate feedback and save your history. Research consent is requested separately above.</p>
+                {policies?.ready ? policies.policies.map((document) => (
+                  <section className="auth-policy-document" key={document.document_type}>
+                    <h3>{({ terms: 'Terms and Conditions', privacy: 'Privacy Notice', research: 'Research Consent' })[document.document_type]} · {document.version}</h3>
+                    <p>{document.content}</p>
+                  </section>
+                )) : <>
+                  <p>ISSB Prep is a practice tool. Its feedback is for preparation only, is not an official ISSB assessment, and does not guarantee selection.</p>
+                  <p>Keep your account credentials private, provide accurate profile details, and use the service responsibly. Your practice responses are sent to the service to generate feedback and save your history. Research consent is requested separately above.</p>
+                  <p>Versioned policies are not available on this server yet. This brief product notice is not an approved comprehensive policy.</p>
+                </>}
               </details>
+              {policiesLoading && <p className="auth-account-note" role="status">Loading current policies…</p>}
+              {policiesError && <div className="form-error" role="alert"><p>{policiesError}</p>
+                <button type="button" className="retry-btn" onClick={() => setPolicyReload((current) => current + 1)}>Reload policies</button>
+              </div>}
             </>
           )}
 
@@ -366,7 +424,8 @@ export default function LoginPage({ initialMode }) {
             </div>
           )}
 
-          <button className="primary-button" disabled={loading}>
+          {mode === 'signin' && <Link className="text-button" to="/reset-password">Forgot password?</Link>}
+          <button className="primary-button" disabled={loading || (mode === 'signup' && (policiesLoading || Boolean(policiesError)))}>
             {loading ? (
               <><LoaderCircle className="spin" size={18} /> Processing…</>
             ) : mode === 'signin' ? (

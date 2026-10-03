@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import {
   AlertCircle,
   BarChart3,
@@ -11,7 +11,7 @@ import {
   Users
 } from 'lucide-react'
 import { useApp } from '../state/AppContext'
-import { historyApi } from '../services/liveApi'
+import { historyApi, normalizeHistory } from '../services/liveApi'
 import AttemptDetailModal from '../components/AttemptDetailModal'
 import CommunityResponsesModal from '../components/CommunityResponsesModal'
 import { getScoreBand } from '../components/OlqScoreSection'
@@ -20,14 +20,32 @@ const categories = ['PPDT', 'WAT', 'TAT', 'SDT', 'SCT']
 const filterTabs = ['All', 'PPDT', 'WAT', 'TAT', 'SDT', 'SCT']
 
 export default function HistoryPage() {
-  const { history, refreshHistory, historyLoading, historyError, stats } = useApp()
+  const { history, refreshHistory, loadMoreHistory, hasMoreHistory, historyLoading, historyError, stats } = useApp()
   const [activeFilter, setActiveFilter] = useState('All')
   const [selectedAttempt, setSelectedAttempt] = useState(null)
   const [communityImage, setCommunityImage] = useState(null)
   const [exporting, setExporting] = useState(false)
   const [exportError, setExportError] = useState('')
+  const [jobs, setJobs] = useState([])
+  const [jobsError, setJobsError] = useState('')
+  useEffect(() => {
+    if (!(import.meta.env.VITE_BACKGROUND_EVALUATIONS === 'true' || (import.meta.env.PROD && import.meta.env.VITE_BACKGROUND_EVALUATIONS !== 'false'))) return
+    let active = true
+    let timer
+    const load = async () => {
+      try {
+        const next = await historyApi.jobs()
+        if (!active) return
+        setJobs(next); setJobsError('')
+      } catch (error) { if (active) setJobsError(error.message) }
+      if (active) timer = setTimeout(load, 15000)
+    }
+    load()
+    return () => { active = false; clearTimeout(timer) }
+  }, [])
 
   const scoreFor = (type) => {
+    if (stats.by_type) return stats.by_type[type.toLowerCase()]?.average?.toFixed(1) ?? null
     const items = history.filter((item) => item.type?.toUpperCase() === type)
     return items.length
       ? (items.reduce((sum, item) => sum + Number(item.score), 0) / items.length).toFixed(1)
@@ -72,7 +90,7 @@ export default function HistoryPage() {
             <BarChart3 />
             <div>
               <h2>Readiness overview</h2>
-              <p>Live average performance by practice type.</p>
+              <p>{stats.by_type ? 'Lifetime average by practice type.' : 'Average across loaded sessions.'}</p>
             </div>
           </header>
           <div className="score-bars">
@@ -102,11 +120,20 @@ export default function HistoryPage() {
         </article>
       </section>
 
+      {(jobs.length > 0 || jobsError) && <section className="surface">
+        <header className="surface-header"><div><h2>Recent evaluations</h2><p>Submitted work continues processing when you leave the practice screen.</p></div></header>
+        {jobsError && <p className="form-error" role="alert">{jobsError}</p>}
+        {jobs.slice(0, 10).map((job) => <div className="setting-row" key={job.job_id}>
+          <div><strong>{job.test_type.toUpperCase()}</strong><small>{({ queued: 'Waiting to be evaluated', running: 'Evaluating your response', saving: 'Saving feedback', completed: 'Feedback ready', failed: 'Answers could not be evaluated', recovery_required: 'Evaluation interrupted. Your submission is retained; contact support before resubmitting.' })[job.status]}</small></div>
+          {job.status === 'completed' && job.result && <button className="secondary-button" onClick={() => setSelectedAttempt(normalizeHistory([{ ...job.result, test_type: job.test_type, created_at: job.created_at }])[0])}>Review feedback</button>}
+        </div>)}
+      </section>}
+
       {/* History Header & Toolbar */}
       <header className="section-header history-header-row">
         <div>
           <h2>Recent sessions</h2>
-          <p>Fetched from your live account.</p>
+          <p>{history.length} loaded{stats.by_type ? ` of ${stats.sessions} sessions` : ''}. Load older sessions to extend the list.</p>
         </div>
 
         <div className="history-actions-row">
@@ -145,7 +172,7 @@ export default function HistoryPage() {
               onClick={() => setActiveFilter(tab)}
             >
               <span>{tab}</span>
-              <small>{count}</small>
+              <small>{count} loaded</small>
             </button>
           )
         })}
@@ -203,7 +230,7 @@ export default function HistoryPage() {
                     <td>{item.duration}</td>
                     <td className="table-score">
                       <span className="score-with-dot" style={{ color: band.color }}>
-                        {numScore.toFixed(1)}
+                        {item.score == null ? '—' : numScore.toFixed(1)}
                       </span>
                     </td>
                     <td><span className="status-badge">{item.status}</span></td>
@@ -229,6 +256,8 @@ export default function HistoryPage() {
           )}
         </section>
       )}
+
+      {hasMoreHistory && <button className="secondary-button" disabled={historyLoading} onClick={loadMoreHistory}>{historyLoading ? 'Loading…' : 'Load older sessions'}</button>}
 
       {/* Modals */}
       {selectedAttempt && (

@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { MemoryRouter } from 'react-router-dom'
@@ -8,6 +8,7 @@ import { authApi, historyApi, practiceApi, analyticsApi, getAllHistory } from '.
 
 vi.mock('../services/liveApi', () => ({
   authApi: {
+    policies: vi.fn(async () => ({ enforced: false, ready: false, policies: [] })),
     login: vi.fn(async () => ({ access_token: 'live-token', user: { name: 'Test User' } })),
     signup: vi.fn(async () => ({ access_token: 'new-token', user: { name: 'New User' } })),
     logout: vi.fn(async () => ({ success: true })),
@@ -96,6 +97,12 @@ function renderAt(path, authenticated = false) {
   return render(<MemoryRouter initialEntries={[path]}><AppProvider><App/></AppProvider></MemoryRouter>)
 }
 
+function policyCatalog(version = 'v1') {
+  return { enforced: true, ready: true, policies: ['terms', 'privacy', 'research'].map((document_type) => ({
+    document_type, version, content: `Test-only ${document_type} content ${version}.`,
+  })) }
+}
+
 afterEach(() => {
   cleanup(); localStorage.clear(); sessionStorage.clear(); vi.clearAllMocks()
 })
@@ -120,7 +127,7 @@ describe('application routes', () => {
   it('explains an empty history filter and exposes its selected state', async () => {
     renderAt('/history', true)
     await screen.findByRole('button', { name: 'View evaluation details' })
-    const filter = screen.getByRole('button', { name: /^WAT\s*0$/ })
+    const filter = screen.getByRole('button', { name: /^WAT\s*0 loaded$/ })
     await userEvent.click(filter)
     expect(filter).toHaveAttribute('aria-pressed', 'true')
     expect(screen.getByText(/No WAT sessions yet/)).toBeInTheDocument()
@@ -134,7 +141,7 @@ describe('application routes', () => {
       await new Promise((resolve) => setTimeout(resolve, 100))
       if (name === 'analytics') {
         await userEvent.click(await screen.findByRole('tab', { name: 'Dual View' }))
-        await userEvent.click(screen.getByText('Compare with candidate benchmarks'))
+        await userEvent.click(screen.getByText('Compare with practice benchmarks'))
       }
       if (name === 'dashboard') {
         const stylesheet = document.createElement('link')
@@ -308,7 +315,7 @@ describe('live practice integrations', () => {
   it('renders history returned by the live API and opens attempt review modal with red flags and deep insights', async () => {
     const user = userEvent.setup(); renderAt('/history', true)
     await waitFor(() => expect(screen.getByText('Sep 12, 2026')).toBeInTheDocument())
-    expect(screen.getByText('Fetched from your live account.')).toBeInTheDocument()
+    expect(screen.getByText(/1 loaded.*Load older sessions/)).toBeInTheDocument()
 
     // Clicking the row opens the AttemptDetailModal
     await user.click(screen.getByText('Sep 12, 2026'))
@@ -330,6 +337,43 @@ describe('live practice integrations', () => {
 })
 
 describe('analytics and evaluation guide features', () => {
+  it('shows an empty benchmark without ranking the user at the bottom', async () => {
+    analyticsApi.getPercentile.mockResolvedValueOnce({ percentile: 0, has_benchmark: false, sample_size: 0 })
+    analyticsApi.getAverages.mockResolvedValueOnce([{ test_type: 'ppdt', total_attempts: 2, sample_size: 0,
+      sample_attempts: 2, average_score: null, median_score: null, best_score: null }])
+    renderAt('/analytics', true)
+    await userEvent.click(screen.getByText('Compare with practice benchmarks'))
+    await userEvent.click(screen.getByRole('button', { name: 'Calculate' }))
+    expect(await screen.findByText('No comparison available')).toBeInTheDocument()
+    expect(screen.queryByText(/Top 100%/)).not.toBeInTheDocument()
+    const benchmark = screen.getByRole('heading', { name: 'Practice score averages' }).closest('.benchmark-table-box')
+    expect(within(benchmark).getAllByText('—')).toHaveLength(3)
+  })
+
+  it('shows compared attempts rather than inflating the distinct candidate count', async () => {
+    analyticsApi.getPercentile.mockResolvedValueOnce({ percentile: 100, sample_size: 10, sample_attempts: 12,
+      total_attempts: 100, total_candidates: 2, has_benchmark: true })
+    renderAt('/analytics', true)
+    await userEvent.click(screen.getByText('Compare with practice benchmarks'))
+    await userEvent.click(screen.getByRole('button', { name: 'Calculate' }))
+    expect(await screen.findByText('100.0% scored lower')).toBeInTheDocument()
+    expect(screen.getByText(/10 valid scores from the newest 12 of 100/)).toBeInTheDocument()
+    expect(screen.queryByText(/Top 0%/)).not.toBeInTheDocument()
+    expect(screen.queryByText(/registered candidate evaluations/)).not.toBeInTheDocument()
+  })
+
+  it('ignores a comparison response after the score input has changed', async () => {
+    let resolveComparison
+    analyticsApi.getPercentile.mockImplementationOnce(() => new Promise((resolve) => { resolveComparison = resolve }))
+    renderAt('/analytics', true)
+    await userEvent.click(screen.getByText('Compare with practice benchmarks'))
+    await userEvent.click(screen.getByRole('button', { name: 'Calculate' }))
+    fireEvent.change(screen.getByLabelText('Score (0–10)'), { target: { value: '8' } })
+    await act(async () => { resolveComparison({ percentile: 85, sample_size: 10, has_benchmark: true }) })
+    expect(screen.queryByText('85.0% scored lower')).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Calculate' })).toBeEnabled()
+  })
+
   it('preserves a valid zero-score cloud assessment', async () => {
     analyticsApi.getOverallJudge.mockResolvedValueOnce({
       overall_readiness_score: 0,
@@ -458,7 +502,7 @@ describe('analytics and evaluation guide features', () => {
     await user.click(screen.getByRole('button', { name: /Create account/i }))
     expect(screen.getByRole('heading', { name: 'Create candidate account' })).toBeInTheDocument()
     expect(screen.getByPlaceholderText('e.g. Saifur Rahman')).toBeInTheDocument()
-    expect(screen.getByLabelText(/I agree that my anonymized responses/i)).toBeChecked()
+    expect(screen.getByLabelText(/I agree that my anonymized responses/i)).not.toBeChecked()
     expect(screen.getByLabelText(/Full Name/i)).toHaveValue('')
     expect(screen.getByLabelText(/I accept the Terms and Conditions/i)).not.toBeChecked()
 
@@ -468,6 +512,61 @@ describe('analytics and evaluation guide features', () => {
     expect(screen.getByPlaceholderText('e.g. Bangladeshi')).toBeInTheDocument()
   })
 
+  it('submits the exact approved policy versions only after explicit opt-in', async () => {
+    authApi.policies.mockResolvedValueOnce(policyCatalog())
+    const user = userEvent.setup(); renderAt('/signup')
+    expect(screen.getByLabelText(/I agree that my anonymized responses/i)).not.toBeChecked()
+    expect(screen.getByLabelText(/I accept the Terms and Conditions/i)).not.toBeChecked()
+    await screen.findByText('Terms and Conditions · v1')
+    await user.click(screen.getByText('Read Terms and Conditions'))
+    expect(screen.getByText('Test-only privacy content v1.')).toBeVisible()
+    await user.click(screen.getByLabelText(/I agree that my anonymized responses/i))
+    await user.click(screen.getByLabelText(/I accept the Terms and Conditions/i))
+    await user.type(screen.getByLabelText(/Full Name/i), 'Tariq Rahman')
+    await user.type(screen.getByPlaceholderText('you@example.com'), 'versioned@example.com')
+    await user.type(screen.getByPlaceholderText('Min. 8 characters'), 'Password123!')
+    await user.click(screen.getByRole('button', { name: /Create account & start/i }))
+    await waitFor(() => expect(authApi.signup).toHaveBeenCalledWith(expect.objectContaining({
+      terms_accepted: true, privacy_acknowledged: true, research_consent: true,
+      terms_version: 'v1', privacy_version: 'v1', research_version: 'v1',
+    })))
+  })
+
+  it('blocks registration during policy outages while leaving sign-in available', async () => {
+    authApi.policies.mockRejectedValueOnce(new Error('Service unavailable'))
+    const user = userEvent.setup(); renderAt('/signup')
+    expect(await screen.findByText(/Policies could not be loaded/)).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /Create account & start/i })).toBeDisabled()
+    expect(authApi.signup).not.toHaveBeenCalled()
+    await user.click(screen.getByRole('button', { name: /^Sign in$/i }))
+    expect(screen.getByRole('button', { name: /Sign in to live practice/i })).toBeEnabled()
+  })
+
+  it('reloads changed policies and clears both acceptances without resubmitting', async () => {
+    authApi.policies.mockResolvedValueOnce(policyCatalog()).mockResolvedValueOnce(policyCatalog('v2'))
+    authApi.signup.mockRejectedValueOnce(Object.assign(new Error('Policies have changed.'), { status: 409 }))
+    const user = userEvent.setup(); renderAt('/signup')
+    await screen.findByText('Terms and Conditions · v1')
+    await user.click(screen.getByLabelText(/I agree that my anonymized responses/i))
+    await user.click(screen.getByLabelText(/I accept the Terms and Conditions/i))
+    await user.type(screen.getByLabelText(/Full Name/i), 'Tariq Rahman')
+    await user.type(screen.getByPlaceholderText('you@example.com'), 'versioned@example.com')
+    await user.type(screen.getByPlaceholderText('Min. 8 characters'), 'Password123!')
+    await user.click(screen.getByRole('button', { name: /Create account & start/i }))
+    await screen.findByText('Terms and Conditions · v2')
+    expect(screen.getByLabelText(/I agree that my anonymized responses/i)).not.toBeChecked()
+    expect(screen.getByLabelText(/I accept the Terms and Conditions/i)).not.toBeChecked()
+    expect(authApi.signup).toHaveBeenCalledTimes(1)
+  })
+
+  it('does not invent versions when an older backend lacks the policy endpoint', async () => {
+    authApi.policies.mockRejectedValueOnce(Object.assign(new Error('Not found'), { status: 404 }))
+    renderAt('/signup')
+    expect(await screen.findByText(/Versioned policies are not available on this server yet/)).toBeInTheDocument()
+    await waitFor(() => expect(screen.getByRole('button', { name: /Create account & start/i })).toBeEnabled())
+    expect(screen.getByLabelText(/I agree that my anonymized responses/i)).not.toBeChecked()
+  })
+
   it('successfully registers candidate with age, nationality, consent and navigates to dashboard', async () => {
     const user = userEvent.setup()
     renderAt('/login', false)
@@ -475,6 +574,7 @@ describe('analytics and evaluation guide features', () => {
     await user.click(screen.getByRole('button', { name: /Create account/i }))
     await user.clear(screen.getByLabelText(/Full Name/i))
     await user.click(screen.getByLabelText(/I accept the Terms and Conditions/i))
+    await user.click(screen.getByLabelText(/I agree that my anonymized responses/i))
 
     await user.type(screen.getByPlaceholderText('e.g. Saifur Rahman'), 'Tariq Rahman')
     await user.type(screen.getByPlaceholderText('you@example.com'), 'tariq@example.com')
@@ -505,6 +605,7 @@ describe('analytics and evaluation guide features', () => {
 
     await user.click(screen.getByRole('button', { name: /Create account/i }))
     await user.click(screen.getByLabelText(/I accept the Terms and Conditions/i))
+    await user.click(screen.getByLabelText(/I agree that my anonymized responses/i))
     await user.type(screen.getByPlaceholderText('e.g. Saifur Rahman'), 'Tariq Rahman')
     await user.type(screen.getByPlaceholderText('you@example.com'), 'tariq@example.com')
     await user.type(screen.getByPlaceholderText('Min. 8 characters'), '1234')
@@ -522,6 +623,7 @@ describe('analytics and evaluation guide features', () => {
 
     await user.click(screen.getByRole('button', { name: /Create account/i }))
     await user.click(screen.getByLabelText(/I accept the Terms and Conditions/i))
+    await user.click(screen.getByLabelText(/I agree that my anonymized responses/i))
     await user.type(screen.getByPlaceholderText('e.g. Saifur Rahman'), 'Tariq Rahman')
     await user.type(screen.getByPlaceholderText('you@example.com'), 'tariq@example.com')
     await user.type(screen.getByPlaceholderText('Min. 8 characters'), 'Password123!')
@@ -548,6 +650,7 @@ describe('analytics and evaluation guide features', () => {
     const user = userEvent.setup()
     renderAt('/signup', false)
     await user.click(screen.getByLabelText(/I accept the Terms and Conditions/i))
+    await user.click(screen.getByLabelText(/I agree that my anonymized responses/i))
 
     const nameInput = screen.getByPlaceholderText('e.g. Saifur Rahman')
     expect(nameInput).toHaveAttribute('maxlength', '100')
@@ -572,6 +675,7 @@ describe('analytics and evaluation guide features', () => {
     const user = userEvent.setup()
     renderAt('/signup', false)
     await user.click(screen.getByLabelText(/I accept the Terms and Conditions/i))
+    await user.click(screen.getByLabelText(/I agree that my anonymized responses/i))
 
     await user.type(screen.getByPlaceholderText('e.g. Saifur Rahman'), 'Tariq Rahman')
     await user.type(screen.getByPlaceholderText('you@example.com'), 'tariq@example.com')
@@ -596,6 +700,7 @@ describe('analytics and evaluation guide features', () => {
     const user = userEvent.setup()
     renderAt('/signup', false)
     await user.click(screen.getByLabelText(/I accept the Terms and Conditions/i))
+    await user.click(screen.getByLabelText(/I agree that my anonymized responses/i))
 
     await user.type(screen.getByPlaceholderText('e.g. Saifur Rahman'), 'Tariq Rahman')
     await user.type(screen.getByPlaceholderText('you@example.com'), 'tariq@example.com')
@@ -612,6 +717,7 @@ describe('analytics and evaluation guide features', () => {
   it('requires separate terms acceptance before registering', async () => {
     const user = userEvent.setup()
     renderAt('/signup', false)
+    await user.click(screen.getByLabelText(/I agree that my anonymized responses/i))
     await user.type(screen.getByLabelText(/Full Name/i), 'Tariq Rahman')
     await user.type(screen.getByPlaceholderText('you@example.com'), 'valid@example.com')
     await user.type(screen.getByPlaceholderText('Min. 8 characters'), 'Password123!')

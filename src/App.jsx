@@ -11,6 +11,7 @@ import LoginPage from './pages/LoginPage'
 import LandingPage from './pages/LandingPage'
 import WebMCPBridge from './components/WebMCPBridge'
 import ConnectionNotice from './components/ConnectionNotice'
+import PasswordResetPage from './pages/PasswordResetPage'
 import { useApp } from './state/AppContext'
 
 function RequireAuth({ children }) {
@@ -30,6 +31,7 @@ export default function App() {
         <Route path="/landing" element={<LandingPage />} />
         <Route path="/login" element={<LoginPage />} />
         <Route path="/signup" element={<LoginPage initialMode="signup" />} />
+        <Route path="/reset-password" element={<PasswordResetPage />} />
 
         {/* Unauthenticated visitors see the Landing Page at root */}
         {!isAuthenticated && <Route path="/" element={<LandingPage />} />}

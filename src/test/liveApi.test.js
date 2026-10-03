@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { API_BASE_URL, LIVE_API_URL, authApi, getAllHistory, practiceApi, analyticsApi, historyApi } from '../services/liveApi'
+import { API_BASE_URL, LIVE_API_URL, authApi, getAllHistory, practiceApi, analyticsApi, historyApi, refreshBrowserSession } from '../services/liveApi'
 
 const ok = (data = {}) => Promise.resolve({ ok: true, json: async () => data })
 
@@ -9,10 +9,84 @@ beforeEach(() => {
 })
 
 afterEach(() => {
-  localStorage.clear(); vi.unstubAllGlobals(); vi.restoreAllMocks()
+  localStorage.clear(); sessionStorage.clear(); vi.unstubAllGlobals(); vi.unstubAllEnvs(); vi.restoreAllMocks()
 })
 
 describe('production API contract', () => {
+  it('renews expired access before submitting and never repeats an evaluation POST', async () => {
+    const jwt = exp => `header.${btoa(JSON.stringify({ sub: 'same-account', exp }))}.signature`
+    localStorage.setItem('issb-token', jwt(1))
+    fetch.mockResolvedValueOnce(await ok({ access_token: jwt(Date.now() / 1000 + 3600) }))
+    await practiceApi.submitWat([], 'A')
+    expect(fetch.mock.calls.map(([url]) => url)).toEqual(['/api/v1/auth/refresh?browser_session=true', '/api/v1/wat/evaluate'])
+    expect(JSON.parse(fetch.mock.calls[0][1].body)).toEqual({})
+    expect(localStorage.getItem('issb-refresh')).toBeNull()
+    expect(fetch.mock.calls[1][1].headers.Authorization).toContain(localStorage.getItem('issb-token'))
+  })
+
+  it('coalesces simultaneous session renewal', async () => {
+    let finish
+    fetch.mockImplementationOnce(() => new Promise(resolve => { finish = resolve }))
+    const first = refreshBrowserSession()
+    const second = refreshBrowserSession()
+    finish(await ok({ access_token: 'renewed-token' }))
+    await Promise.all([first, second])
+    expect(fetch).toHaveBeenCalledOnce()
+  })
+
+  it('submits one queue job and reads status until its feedback is saved', async () => {
+    vi.stubEnv('VITE_BACKGROUND_EVALUATIONS', 'true')
+    vi.useFakeTimers()
+    try {
+      fetch.mockResolvedValueOnce(await ok({ job_id: 'job-1', status: 'queued' }))
+      fetch.mockResolvedValueOnce(await ok({ job_id: 'job-1', status: 'completed', result: { session_id: 'saved-once', feedback: {} } }))
+      const pending = practiceApi.submitTat('img', 'Completed response')
+      await vi.waitFor(() => expect(fetch).toHaveBeenCalledOnce())
+      await vi.advanceTimersByTimeAsync(5000)
+      expect(await pending).toMatchObject({ session_id: 'saved-once' })
+      expect(fetch.mock.calls.map(([url]) => url)).toEqual(['/api/v1/evaluation-jobs/tat', '/api/v1/evaluation-jobs/job-1'])
+      expect(fetch.mock.calls.filter(([,options]) => options.method === 'POST')).toHaveLength(1)
+    } finally { vi.useRealTimers() }
+  })
+
+  it('loads published policies and records account-scoped acceptance through the live API', async () => {
+    const claims = { terms_accepted: true, privacy_acknowledged: true, research_consent: true,
+      terms_version: 'v1', privacy_version: 'v1', research_version: 'v1' }
+    await authApi.policies(); await authApi.policyAcceptance(); await authApi.acceptPolicies(claims)
+    expect(fetch.mock.calls.map(([url]) => url)).toEqual(['/api/v1/auth/policies', '/api/v1/auth/policy-acceptance', '/api/v1/auth/policy-acceptance'])
+    expect(JSON.parse(fetch.mock.calls[2][1].body)).toEqual(claims)
+    expect(fetch.mock.calls[2][1].headers.Authorization).toBe('Bearer account-token')
+  })
+  it('retains the submission key when the same account receives a new token', async () => {
+    const jwt = nonce => `header.${btoa(JSON.stringify({ sub: 'same-account', nonce }))}.signature`
+    localStorage.setItem('issb-token', jwt('first'))
+    fetch.mockRejectedValueOnce(new TypeError('Connection lost'))
+    const payload = { image_id: 'token-refresh', story_text: 'Same response' }
+    await expect(practiceApi.submitPpdt(payload)).rejects.toThrow()
+    localStorage.setItem('issb-token', jwt('second'))
+    await practiceApi.submitPpdt(payload)
+    expect(fetch.mock.calls[1][1].headers['Idempotency-Key']).toBe(fetch.mock.calls[0][1].headers['Idempotency-Key'])
+  })
+  it('keeps the same submission key through a failed request and module reload', async () => {
+    fetch.mockRejectedValueOnce(new TypeError('Connection lost'))
+    const payload = { image_id: 'retry-image', story_text: 'A completed response' }
+    await expect(practiceApi.submitPpdt(payload)).rejects.toThrow()
+    const firstKey = fetch.mock.calls[0][1].headers['Idempotency-Key']
+    expect(firstKey).toMatch(/^[0-9a-f-]{36}$/)
+    vi.resetModules()
+    const reloaded = await import('../services/liveApi')
+    await reloaded.practiceApi.submitPpdt(payload)
+    expect(fetch.mock.calls[1][1].headers['Idempotency-Key']).toBe(firstKey)
+    await reloaded.practiceApi.submitPpdt(payload)
+    expect(fetch.mock.calls[2][1].headers['Idempotency-Key']).not.toBe(firstKey)
+  })
+
+  it('uses a different submission key when the answers change', async () => {
+    fetch.mockRejectedValueOnce(new TypeError('Connection lost'))
+    await expect(practiceApi.submitWat([{ word: 'Duty', response: 'First answer' }], 'A')).rejects.toThrow()
+    await practiceApi.submitWat([{ word: 'Duty', response: 'Changed answer' }], 'A')
+    expect(fetch.mock.calls[0][1].headers['Idempotency-Key']).not.toBe(fetch.mock.calls[1][1].headers['Idempotency-Key'])
+  })
   it('rejects malformed successful responses instead of treating them as saved submissions', async () => {
     fetch.mockResolvedValueOnce({ ok: true, status: 200, json: async () => { throw new SyntaxError('Invalid JSON') } })
     await expect(practiceApi.submitPpdt({ story_text: 'Response' })).rejects.toThrow('unreadable response')
@@ -40,6 +114,7 @@ describe('production API contract', () => {
       }))
       const pending = practiceApi.submitWat([], 'timeout')
       const assertion = expect(pending).rejects.toMatchObject({ isTimeout: true, message: expect.stringContaining('Check your history before retrying') })
+      await vi.waitFor(() => expect(fetch).toHaveBeenCalledOnce())
       await vi.advanceTimersByTimeAsync(120000)
       await assertion
       expect(fetch).toHaveBeenCalledTimes(1)
@@ -51,7 +126,7 @@ describe('production API contract', () => {
     const payload = { image_id: 'duplicate-check', story_text: 'A test response' }
     const first = practiceApi.submitPpdt(payload)
     const second = practiceApi.submitPpdt(payload)
-    expect(fetch).toHaveBeenCalledTimes(1)
+    await vi.waitFor(() => expect(fetch).toHaveBeenCalledTimes(1))
     resolveFetch({ ok: true, json: async () => ({ session_id: 'once' }) })
     expect(await first).toEqual(await second)
     await practiceApi.submitPpdt(payload)
@@ -65,16 +140,16 @@ describe('production API contract', () => {
   })
 
   it('does not report incomplete history as a successful refresh', async () => {
-    fetch.mockImplementation((url) => url.includes('/wat/history')
+    fetch.mockImplementation((url) => url.includes('/history/summary')
       ? Promise.resolve({ ok: false, status: 503, json: async () => ({ detail: 'Unavailable' }) })
-      : ok([]))
-    await expect(getAllHistory()).rejects.toThrow('Could not refresh WAT history')
+      : ok({ items: [], has_more: false }))
+    await expect(getAllHistory()).rejects.toMatchObject({ status: 503 })
   })
 
   it('propagates expired authentication even when another history endpoint succeeds', async () => {
-    fetch.mockImplementation((url) => url.includes('/wat/history')
+    fetch.mockImplementation((url) => url.includes('/history/summary')
       ? Promise.resolve({ ok: false, status: 401, json: async () => ({ detail: 'Expired' }) })
-      : ok([]))
+      : ok({ items: [], has_more: false }))
     await expect(getAllHistory()).rejects.toMatchObject({ status: 401 })
   })
 
@@ -87,7 +162,9 @@ describe('production API contract', () => {
     fetch.mockImplementationOnce(() => ok({ access_token: 'next-token' }))
     await authApi.login('candidate@example.com', 'secret')
     const [url, options] = fetch.mock.calls[0]
-    expect(url).toBe('/api/v1/auth/login')
+    expect(url).toBe('/api/v1/auth/login?browser_session=true')
+    expect(options.headers['X-ISSB-Browser']).toBe('1')
+    expect(options.credentials).toBe('same-origin')
     expect(options.body).toBe(JSON.stringify({ email: 'candidate@example.com', password: 'secret' }))
     expect(options.headers.Authorization).toBe('Bearer account-token')
   })
@@ -116,16 +193,19 @@ describe('production API contract', () => {
     expect(JSON.parse(fetch.mock.calls[3][1].body).set_code).toBe('C')
   })
 
-  it('requests history for all five assessments', async () => {
-    fetch.mockImplementation(() => ok([]))
-    await getAllHistory()
-    expect(fetch.mock.calls.map(([url]) => url)).toEqual(['/api/v1/history', '/api/v1/wat/history', '/api/v1/tat/history', '/api/v1/sdt/history', '/api/v1/sct/history'])
+  it('loads a bounded history page and separate lifetime statistics', async () => {
+    fetch.mockImplementation((url) => url.includes('/summary') ? ok({ sessions: 240, by_type: {} }) : ok({ items: [{ test_type: 'wat', session_id: 'wat-1', created_at: '2026-10-01', feedback: {} }], next_cursor: 'older', has_more: true }))
+    const history = await getAllHistory()
+    expect(history[0]).toMatchObject({ type: 'WAT', score: null })
+    expect(history.summary.sessions).toBe(240)
+    expect(history.nextCursor).toBe('older')
+    expect(fetch.mock.calls.map(([url]) => url)).toEqual(['/api/v1/history/page?limit=50', '/api/v1/history/summary'])
   })
 
   it('supports signup and logout contracts', async () => {
     fetch.mockImplementationOnce(() => ok({ success: true, access_token: 'new-token' }))
     await authApi.signup({ email: 'new@example.com', password: 'password123', age: 22, nationality: 'Bangladeshi', research_consent: true })
-    expect(fetch.mock.calls[0][0]).toBe('/api/v1/auth/signup')
+    expect(fetch.mock.calls[0][0]).toBe('/api/v1/auth/signup?browser_session=true')
     expect(JSON.parse(fetch.mock.calls[0][1].body)).toMatchObject({ email: 'new@example.com', age: 22, nationality: 'Bangladeshi', research_consent: true })
 
     fetch.mockImplementationOnce(() => ok({ success: true }))

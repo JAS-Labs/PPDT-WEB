@@ -1,5 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
-import { getAllHistory } from '../services/liveApi'
+import { getAllHistory, historyApi } from '../services/liveApi'
 
 const AppContext = createContext(null)
 
@@ -41,6 +41,8 @@ export function AppProvider({ children }) {
   const [history, setHistory] = useState([])
   const [historyLoading, setHistoryLoading] = useState(false)
   const [historyError, setHistoryError] = useState('')
+  const [lifetime, setLifetime] = useState(null)
+  const [nextCursor, setNextCursor] = useState(null)
   const historyRequest = useRef(0)
   const [settings, setSettings] = useState(() => read('issb-settings', { reminders: true, sounds: true, compact: false }))
 
@@ -54,16 +56,20 @@ export function AppProvider({ children }) {
     setProfile(sanitized)
     localStorage.setItem('issb-profile', JSON.stringify(sanitized))
   }
-  const addAttempt = (attempt) => setHistory((current) => [{ id: attempt.id || crypto.randomUUID(), date: new Date().toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }), status: 'Completed', ...attempt }, ...current.filter((item) => item.id !== attempt.id)])
+  const addAttempt = (attempt) => {
+    setHistory((current) => [{ id: attempt.id || crypto.randomUUID(), date: new Date().toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }), status: 'Completed', ...attempt }, ...current.filter((item) => item.id !== attempt.id)])
+    const accountToken = readStoredToken()
+    historyApi.summary?.().then((summary) => { if (readStoredToken() === accountToken) setLifetime(summary) }).catch(() => { if (readStoredToken() === accountToken) setLifetime(null) })
+  }
   const refreshHistory = useCallback(async () => {
     const requestId = ++historyRequest.current
     const requestToken = readStoredToken()
-    if (!requestToken) { setHistory([]); setHistoryLoading(false); return }
+    if (!requestToken) { setHistory([]); setLifetime(null); setNextCursor(null); setHistoryLoading(false); return }
     const isCurrent = () => requestId === historyRequest.current && readStoredToken() === requestToken
     setHistoryLoading(true); setHistoryError('')
     try {
       const nextHistory = await getAllHistory()
-      if (isCurrent()) setHistory(nextHistory)
+      if (isCurrent()) { setHistory(nextHistory); setLifetime(nextHistory.summary || null); setNextCursor(nextHistory.nextCursor || null) }
     } catch (error) {
       if (!isCurrent()) return
       if (error.status === 401) {
@@ -78,6 +84,27 @@ export function AppProvider({ children }) {
     }
   }, [])
 
+  const loadMoreHistory = async () => {
+    if (!nextCursor || historyLoading) return
+    const requestId = ++historyRequest.current
+    const requestToken = readStoredToken()
+    setHistoryLoading(true); setHistoryError('')
+    try {
+      const page = await historyApi.page(nextCursor)
+      if (requestId !== historyRequest.current || readStoredToken() !== requestToken) return
+      setHistory((current) => [...current, ...page.items.filter((item) => !current.some((old) => old.id === item.id && old.type === item.type))])
+      setNextCursor(page.next_cursor)
+    } catch (error) {
+      if (requestId === historyRequest.current && readStoredToken() === requestToken) setHistoryError(error.message)
+    } finally { if (requestId === historyRequest.current) setHistoryLoading(false) }
+  }
+
+  useEffect(() => {
+    const refreshed = (event) => setToken(event.detail)
+    window.addEventListener('issb-token-refreshed', refreshed)
+    return () => window.removeEventListener('issb-token-refreshed', refreshed)
+  }, [])
+
   useEffect(() => {
     const onAuthExpired = () => {
       historyRequest.current += 1
@@ -86,6 +113,7 @@ export function AppProvider({ children }) {
       setToken(null)
       saveProfile({ name: 'Candidate', email: '', nationality: 'Bangladeshi', verified: false, mode: 'candidate' })
       setHistory([])
+      setLifetime(null); setNextCursor(null)
       setHistoryError('Your session has expired. Please sign in again.')
     }
     window.addEventListener('issb-auth-expired', onAuthExpired)
@@ -99,6 +127,7 @@ export function AppProvider({ children }) {
         const nextToken = readStoredToken()
         setToken(nextToken)
         setHistory([])
+        setLifetime(null); setNextCursor(null)
         setHistoryError('')
         setHistoryLoading(false)
         if (!nextToken) {
@@ -117,15 +146,16 @@ export function AppProvider({ children }) {
     setSettings(next); localStorage.setItem('issb-settings', JSON.stringify(next))
   }
   const stats = useMemo(() => {
-    const scored = history.filter((item) => Number.isFinite(Number(item.score)))
+    if (lifetime) return { ...lifetime, average: lifetime.average == null ? '—' : lifetime.average.toFixed(1), best: lifetime.best == null ? '—' : lifetime.best.toFixed(1) }
+    const scored = history.filter((item) => item.score != null && Number.isFinite(Number(item.score)))
     const average = scored.length ? scored.reduce((sum, item) => sum + Number(item.score), 0) / scored.length : 0
     const best = scored.length ? Math.max(...scored.map((item) => Number(item.score))) : 0
     return { sessions: history.length, average: average.toFixed(1), best: best.toFixed(1) }
-  }, [history])
+  }, [history, lifetime])
 
   const isAuthenticated = Boolean(isValidToken(token) || readStoredToken())
 
-  return <AppContext.Provider value={{ token, setToken, isAuthenticated, profile, saveProfile, history, addAttempt, refreshHistory, historyLoading, historyError, settings, updateSettings, stats }}>{children}</AppContext.Provider>
+  return <AppContext.Provider value={{ token, setToken, isAuthenticated, profile, saveProfile, history, addAttempt, refreshHistory, loadMoreHistory, hasMoreHistory: Boolean(nextCursor), historyLoading, historyError, settings, updateSettings, stats }}>{children}</AppContext.Provider>
 }
 
 export function useApp() {

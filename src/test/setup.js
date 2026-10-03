@@ -1,6 +1,7 @@
 import '@testing-library/jest-dom/vitest'
+import { webcrypto } from 'node:crypto'
 
 Object.defineProperty(globalThis, 'crypto', {
-  value: { ...globalThis.crypto, randomUUID: () => 'test-attempt-id' },
+  value: webcrypto,
   configurable: true,
 })

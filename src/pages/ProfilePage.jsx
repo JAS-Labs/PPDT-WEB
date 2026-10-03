@@ -17,6 +17,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { authApi, historyApi } from '../services/liveApi'
 import { useApp } from '../state/AppContext'
 import { TESTS } from '../data/tests'
+import PolicyReview from '../components/PolicyReview'
 
 const options = [
   { key: 'reminders', title: 'Daily practice reminder', detail: 'Not available in the web version yet.', icon: BellRing, unavailable: true },
@@ -35,6 +36,10 @@ export default function ProfilePage() {
 
   const testStats = useMemo(() => {
     return TESTS.map((t) => {
+      if (stats.by_type) {
+        const item = stats.by_type[t.name.toLowerCase()]
+        return { ...t, count: item?.sessions || 0, avg: item?.average?.toFixed(1) ?? '—', best: item?.best?.toFixed(1) ?? '—' }
+      }
       const attempts = history.filter((i) => i.type?.toUpperCase() === t.name)
       const count = attempts.length
       const avg = count > 0
@@ -45,7 +50,7 @@ export default function ProfilePage() {
         : '—'
       return { ...t, count, avg, best }
     })
-  }, [history])
+  }, [history, stats])
 
   const handleLogout = async () => {
     // Start server logout with the current token, but clear local access immediately.
@@ -196,6 +201,7 @@ export default function ProfilePage() {
         )}
 
         {/* Settings List */}
+        <PolicyReview />
         <div className="settings-list">
           {options.map(({ key, title, detail, icon: Icon, unavailable }) => (
             <div className="setting-row" key={key}>

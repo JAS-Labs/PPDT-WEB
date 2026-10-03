@@ -29,6 +29,7 @@ import { useApp } from '../state/AppContext'
 import OlqScoreSection, { getScoreBand } from '../components/OlqScoreSection'
 import ReadinessRing from '../components/ReadinessRing'
 import { synthesizePsychologicalReadiness, getReadinessTier } from '../utils/psychologicalSynthesis'
+import { benchmarkComparison, benchmarkSampleNote, benchmarkScore } from '../utils/benchmarkPresentation'
 import './analytics.css'
 
 const TEST_TYPES = [
@@ -49,12 +50,23 @@ export default function AnalyticsPage() {
   // Benchmark averages state
   const [averages, setAverages] = useState([])
   const [averagesLoading, setAveragesLoading] = useState(false)
+  const [averagesError, setAveragesError] = useState('')
 
   // Percentile checker tool state
   const [percentileForm, setPercentileForm] = useState({ score: '7.0', testType: 'ppdt' })
   const [percentileResult, setPercentileResult] = useState(null)
   const [percentileLoading, setPercentileLoading] = useState(false)
   const [percentileError, setPercentileError] = useState('')
+  const percentileRequest = useRef(0)
+  const comparison = benchmarkComparison(percentileResult)
+
+  const updatePercentileForm = (field, value) => {
+    percentileRequest.current += 1
+    setPercentileForm((current) => ({ ...current, [field]: value }))
+    setPercentileResult(null)
+    setPercentileError('')
+    setPercentileLoading(false)
+  }
 
   const historyRef = useRef(history)
   historyRef.current = history
@@ -94,11 +106,12 @@ export default function AnalyticsPage() {
   // Load benchmark averages
   const loadAverages = async () => {
     setAveragesLoading(true)
+    setAveragesError('')
     try {
       const data = await analyticsApi.getAverages(1000)
       if (Array.isArray(data)) setAverages(data)
     } catch {
-      // non-fatal fallback
+      setAveragesError('Benchmarks could not be refreshed. Any displayed sample is from the previous load.')
     } finally {
       setAveragesLoading(false)
     }
@@ -144,19 +157,25 @@ export default function AnalyticsPage() {
     }
     setPercentileLoading(true)
     setPercentileError('')
+    setPercentileResult(null)
+    const requestId = ++percentileRequest.current
     try {
       const res = await analyticsApi.getPercentile(num, percentileForm.testType)
-      setPercentileResult(res)
+      if (requestId === percentileRequest.current) setPercentileResult(res)
     } catch (err) {
-      setPercentileError(err.message || 'Could not calculate percentile ranking.')
+      if (requestId === percentileRequest.current) setPercentileError(err.message || 'Could not calculate percentile ranking.')
     } finally {
-      setPercentileLoading(false)
+      if (requestId === percentileRequest.current) setPercentileLoading(false)
     }
   }
 
   // Per-test stats
   const perTestStats = useMemo(() => {
     return TEST_TYPES.map((t) => {
+      if (stats.by_type) {
+        const item = stats.by_type[t.name.toLowerCase()]
+        return { ...t, count: item?.sessions || 0, avg: item?.average?.toFixed(1) ?? null, best: item?.best?.toFixed(1) ?? null }
+      }
       const attempts = history.filter((item) => item.type?.toUpperCase() === t.name)
       const count = attempts.length
       const avg = count > 0
@@ -167,26 +186,27 @@ export default function AnalyticsPage() {
         : null
       return { ...t, count, avg, best }
     })
-  }, [history])
+  }, [history, stats])
 
   // Score distribution bands
   const scoreBands = useMemo(() => {
     let excellent = 0, good = 0, fair = 0, needsWork = 0
     history.forEach((item) => {
+      if (item.score == null || !Number.isFinite(Number(item.score))) return
       const s = Number(item.score)
       if (s >= 8) excellent++
       else if (s >= 6) good++
       else if (s >= 4) fair++
       else needsWork++
     })
-    const total = history.length
+    const total = excellent + good + fair + needsWork
     return { excellent, good, fair, needsWork, total }
   }, [history])
 
   // Trends calculation: recent vs older
   const testTrends = useMemo(() => {
     return TEST_TYPES.map((t) => {
-      const items = history.filter((item) => item.type?.toUpperCase() === t.name)
+      const items = history.filter((item) => item.type?.toUpperCase() === t.name && item.score != null && Number.isFinite(Number(item.score)))
       if (items.length < 2) return null
       const split = items.length < 6 ? Math.floor(items.length / 2) : 3
       const recent = items.slice(0, split)
@@ -509,7 +529,7 @@ export default function AnalyticsPage() {
               <h4>Test Practice Distribution</h4>
               <div className="stacked-bar">
                 {perTestStats.filter((t) => t.count > 0).map((t) => {
-                  const pct = Math.round((t.count / history.length) * 100)
+                  const pct = Math.round((t.count / stats.sessions) * 100)
                   return (
                     <div
                       key={t.id}
@@ -532,6 +552,7 @@ export default function AnalyticsPage() {
           <div className="surface side-card">
             <header className="surface-header">
               <h2>Score Distribution</h2>
+              <p>Based on {scoreBands.total} scored sessions in the loaded history.</p>
               <p>Breakdown across quality tiers</p>
             </header>
 
@@ -619,13 +640,13 @@ export default function AnalyticsPage() {
       </section>
 
       {/* Percentile Ranking Tool & Benchmark Averages */}
-      <details className="surface benchmark-section analytics-details"><summary>Compare with candidate benchmarks</summary>
+      <details className="surface benchmark-section analytics-details"><summary>Compare with practice benchmarks</summary>
         <div className="benchmark-grid">
           {/* Live Percentile Ranking Tool */}
           <div className="percentile-checker-box">
             <header className="surface-header">
-              <h2>Check Your Percentile Rank</h2>
-              <p>Compare any score against the live candidate database</p>
+              <h2>Compare an attempt score</h2>
+              <p>Compare with recent practice attempts, not a candidate ranking.</p>
             </header>
 
             <form className="percentile-form" onSubmit={checkPercentile}>
@@ -634,7 +655,7 @@ export default function AnalyticsPage() {
                   <span>Test Type</span>
                   <select
                     value={percentileForm.testType}
-                    onChange={(e) => setPercentileForm({ ...percentileForm, testType: e.target.value })}
+                    onChange={(e) => updatePercentileForm('testType', e.target.value)}
                   >
                     {TEST_TYPES.map((t) => (
                       <option key={t.id} value={t.id}>{t.name} — {t.label}</option>
@@ -650,7 +671,7 @@ export default function AnalyticsPage() {
                     min="0"
                     max="10"
                     value={percentileForm.score}
-                    onChange={(e) => setPercentileForm({ ...percentileForm, score: e.target.value })}
+                    onChange={(e) => updatePercentileForm('score', e.target.value)}
                     required
                   />
                 </label>
@@ -667,13 +688,13 @@ export default function AnalyticsPage() {
               <div className="percentile-result-display">
                 <div className="percentile-stat">
                   <strong className="percentile-num">
-                    Top {(100 - percentileResult.percentile).toFixed(0)}%
+                    {comparison.hasData ? `${comparison.percentage.toFixed(1)}% scored lower` : 'No comparison available'}
                   </strong>
-                  <span>({percentileResult.percentile.toFixed(1)}th percentile)</span>
+                  {comparison.hasData && <span>Tied scores are not counted as lower.</span>}
                 </div>
                 <div className="percentile-desc">
-                  <b>{percentileResult.rank_description}</b>
-                  <p>Compared across {percentileResult.total_candidates} registered candidate evaluations.</p>
+                  <p>{comparison.hasData ? comparison.sampleNote : 'No valid practice scores are available in the current sample for this test.'}</p>
+                  <small>Practice feedback only—not an ISSB selection prediction.</small>
                 </div>
               </div>
             )}
@@ -682,10 +703,11 @@ export default function AnalyticsPage() {
           {/* Benchmark Averages Table */}
           <div className="benchmark-table-box">
             <header className="surface-header">
-              <h2>Candidate Averages</h2>
-              <p>Anonymous benchmarks across all users</p>
+              <h2>Practice score averages</h2>
+              <p>Valid scores in recent attempt samples. Cached for up to five minutes.</p>
             </header>
 
+            {averagesError && <p className="subtle-note" role="status">{averagesError}</p>}
             {averagesLoading ? (
               <div className="mini-loading"><LoaderCircle className="spin" size={24} /></div>
             ) : averages.length > 0 ? (
@@ -694,7 +716,7 @@ export default function AnalyticsPage() {
                   <thead>
                     <tr>
                       <th>Test</th>
-                      <th>Attempts</th>
+                      <th>Valid sample / total attempts</th>
                       <th>Average</th>
                       <th>Median</th>
                       <th>Top Score</th>
@@ -702,16 +724,17 @@ export default function AnalyticsPage() {
                   </thead>
                   <tbody>
                     {averages.map((avg) => (
-                      <tr key={avg.test_type}>
+                      <tr key={avg.test_type} title={benchmarkSampleNote(avg)}>
                         <td><strong>{avg.test_type.toUpperCase()}</strong></td>
-                        <td>{avg.total_attempts}</td>
-                        <td>{Number(avg.average_score).toFixed(1)}</td>
-                        <td>{Number(avg.median_score).toFixed(1)}</td>
-                        <td><b className="top-score-badge">{Number(avg.best_score).toFixed(1)}</b></td>
+                        <td>{avg.sample_size ?? '—'} / {avg.total_attempts}</td>
+                        <td>{benchmarkScore(avg.average_score)}</td>
+                        <td>{benchmarkScore(avg.median_score)}</td>
+                        <td><b className="top-score-badge">{benchmarkScore(avg.best_score)}</b></td>
                       </tr>
                     ))}
                   </tbody>
                 </table>
+                <p className="subtle-note">Repeat attempts count separately. {averages.some((avg) => avg.sample_size == null) ? 'Sample details are unavailable on this server.' : 'The sample may be smaller than the total saved history.'}</p>
               </div>
             ) : (
               <p className="subtle-note">No benchmark aggregate available right now.</p>

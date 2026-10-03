@@ -40,6 +40,9 @@
 .auth-refresh .auth-terms { color: #64748b; font-size: .74rem; line-height: 1.65; }
 .auth-refresh .auth-terms summary { cursor: pointer; color: #2563eb; font-weight: 600; }
 .auth-refresh .auth-terms p { margin: 10px 0; }
+.auth-refresh .auth-policy-document { max-height: 240px; overflow-y: auto; overflow-wrap: anywhere; margin-top: 12px; }
+.auth-refresh .auth-policy-document h3 { font-size: .8rem; color: #0f172a; }
+.auth-refresh .auth-policy-document p { white-space: pre-wrap; }
 .auth-refresh .auth-footer { text-align: center; color: #64748b; font-size: .7rem; padding: 0 24px 24px; }
 .auth-refresh :where(a, button, input):focus-visible { outline: 3px solid #2563eb; outline-offset: 4px; }
 @media (max-width: 800px) {
@@ -57,3 +60,6 @@
   .auth-refresh .auth-benefits { display: none; }
   .auth-refresh .auth-form { padding: 22px; }
 }
+.recovery-card { max-width: 480px; margin: 32px auto; padding: 28px; }
+.recovery-card h1 { font-size: 1.7rem; }
+.recovery-card > p { margin: 16px 0; line-height: 1.5; }
