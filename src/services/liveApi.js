@@ -286,6 +286,19 @@ export const adminApi = {
   setUserRole: (userId, role) => request(`/admin/users/${encodeURIComponent(userId)}/role`, {
     method: 'PATCH', body: JSON.stringify({ role }),
   }),
+  userProfile: (userId) => request(`/admin/users/${encodeURIComponent(userId)}/profile`),
+  updateUserProfile: (userId, profile) => request(`/admin/users/${encodeURIComponent(userId)}/profile`, {
+    method: 'PATCH', body: JSON.stringify(profile),
+  }),
+  responses: ({ testType = '', dateFrom = '', dateTo = '', page = 1, limit = 25 } = {}) => {
+    const params = new URLSearchParams({ page: String(page), limit: String(limit) })
+    if (testType) params.set('test_type', testType)
+    if (dateFrom) params.set('date_from', dateFrom)
+    if (dateTo) params.set('date_to', dateTo)
+    return request(`/admin/responses?${params.toString()}`)
+  },
+  response: (testType, sessionId) => request(`/admin/responses/${encodeURIComponent(testType)}/${encodeURIComponent(sessionId)}`),
+  activity: (limit = 50) => request(`/admin/activity?limit=${encodeURIComponent(limit)}`),
 }
 
 export const historyApi = {

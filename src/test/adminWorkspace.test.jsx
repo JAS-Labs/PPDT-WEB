@@ -1,0 +1,66 @@
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
+import { afterEach, expect, it, vi } from 'vitest'
+import { MemoryRouter, Route, Routes } from 'react-router-dom'
+import { AppProvider } from '../state/AppContext'
+import AdminShell from '../components/admin/AdminShell'
+import AdminPage from '../pages/AdminPage'
+import AdminResponsesPage from '../pages/AdminResponsesPage'
+import AdminUsersPage from '../pages/AdminUsersPage'
+import AdminActivityPage from '../pages/AdminActivityPage'
+import { adminApi } from '../services/liveApi'
+
+vi.mock('../services/liveApi', () => ({
+  adminApi: {
+    overview: vi.fn(async () => ({ users_total: 3, admins_total: 1, new_users_30d: 2, attempts_total: 4, attempts_by_test: { ppdt: 1, wat: 2, tat: 1 } })),
+    users: vi.fn(async () => ({ users: [{ id: 'candidate-1', name: 'Candidate One', email: 'candidate@example.com', attempts: 2, role: 'candidate', created_at: '2026-10-01T00:00:00Z' }], total: 1, page: 1, pages: 1 })),
+    userProfile: vi.fn(async () => ({ id: 'candidate-1', name: 'Candidate One', email: 'candidate@example.com', age: 22, nationality: 'Bangladeshi', role: 'candidate', research_consent: true, research_consent_at: '2026-10-01T00:00:00Z', tests: { wat: { attempts: 2, average_score: 6.5, last_attempt_at: '2026-10-10T00:00:00Z' } } })),
+    updateUserProfile: vi.fn(async (_id, value) => ({ ...value, id: 'candidate-1' })),
+    setUserRole: vi.fn(async (_id, role) => ({ role })),
+    responses: vi.fn(async () => ({ items: [{ session_id: 'attempt-1', test_type: 'wat', candidate_ref: 'abc123def0', created_at: '2026-10-10T00:00:00Z', score: 0, response_count: 1 }], total: 1, page: 1, pages: 1 })),
+    response: vi.fn(async () => ({ session_id: 'attempt-1', test_type: 'wat', candidate_ref: 'abc123def0', created_at: '2026-10-10T00:00:00Z', score: 0, payload: { responses: [{ word: 'Teamwork', response: 'I support my team.', response_time_ms: 4500 }] } })),
+    activity: vi.fn(async () => ({ items: [{ id: 'event-1', action: 'response_detail_view', actor_name: 'Admin', target_name: null, created_at: '2026-10-10T00:00:00Z', metadata: { test_type: 'wat' } }] })),
+  },
+}))
+
+function renderAdmin(path, page) {
+  return render(<MemoryRouter initialEntries={[path]}><AppProvider><Routes><Route path="/admin" element={<AdminShell />}>
+    <Route index element={<AdminPage />} /><Route path="responses" element={<AdminResponsesPage />} /><Route path="users" element={<AdminUsersPage />} /><Route path="activity" element={<AdminActivityPage />} />
+  </Route></Routes></AppProvider></MemoryRouter>)
+}
+
+afterEach(() => { cleanup(); localStorage.clear(); vi.clearAllMocks() })
+
+it('renders a separate admin workspace and platform overview', async () => {
+  renderAdmin('/admin', <AdminPage />)
+  expect(screen.getByRole('navigation', { name: 'Administrator navigation' })).toBeInTheDocument()
+  expect(screen.getByRole('heading', { name: 'Good to see you.' })).toBeInTheDocument()
+  await waitFor(() => expect(screen.getByText('Registered accounts')).toBeInTheDocument())
+  expect(screen.getByText('Review candidate responses')).toBeInTheDocument()
+})
+
+it('shows answer text only after opening a pseudonymous test response', async () => {
+  renderAdmin('/admin/responses', <AdminResponsesPage />)
+  await waitFor(() => expect(screen.getByText('abc123def0')).toBeInTheDocument())
+  expect(screen.queryByText('I support my team.')).not.toBeInTheDocument()
+  fireEvent.click(screen.getByRole('button', { name: /Review/i }))
+  await waitFor(() => expect(screen.getByText('I support my team.')).toBeInTheDocument())
+  expect(within(screen.getByRole('dialog')).getByText('0.0 / 10')).toBeInTheDocument()
+  expect(adminApi.response).toHaveBeenCalledWith('wat', 'attempt-1')
+})
+
+it('shows consent status read-only while presenting profile and per-test progress', async () => {
+  renderAdmin('/admin/users', <AdminUsersPage />)
+  await waitFor(() => expect(screen.getByText('Candidate One')).toBeInTheDocument())
+  fireEvent.click(screen.getByRole('button', { name: /View profile/i }))
+  await waitFor(() => expect(screen.getByText('Research consent')).toBeInTheDocument())
+  const dialog = screen.getByRole('dialog')
+  expect(within(dialog).getByText('Granted')).toBeInTheDocument()
+  expect(within(dialog).getByText('6.5 avg score')).toBeInTheDocument()
+  expect(within(dialog).getByText(/Consent must never be changed/)).toBeInTheDocument()
+})
+
+it('renders administrator access history', async () => {
+  renderAdmin('/admin/activity', <AdminActivityPage />)
+  await waitFor(() => expect(screen.getByText('response detail view')).toBeInTheDocument())
+  expect(screen.getByText('Test: WAT')).toBeInTheDocument()
+})
