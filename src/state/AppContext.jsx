@@ -39,6 +39,8 @@ export function AppProvider({ children }) {
     return raw
   })
   const [history, setHistory] = useState([])
+  const [profileLoading, setProfileLoading] = useState(Boolean(readStoredToken()))
+  const profileRequest = useRef(0)
   const [historyLoading, setHistoryLoading] = useState(false)
   const [historyError, setHistoryError] = useState('')
   const [lifetime, setLifetime] = useState(null)
@@ -146,9 +148,11 @@ export function AppProvider({ children }) {
   // The API still independently authorizes every admin request.
   useEffect(() => {
     const requestToken = readStoredToken()
-    if (!requestToken) return
+    const requestId = ++profileRequest.current
+    if (!requestToken) { setProfileLoading(false); return }
+    setProfileLoading(true)
     authApi.profile().then((user) => {
-      if (readStoredToken() !== requestToken) return
+      if (profileRequest.current !== requestId || readStoredToken() !== requestToken) return
       setProfile((current) => {
         const next = {
           ...current,
@@ -162,7 +166,9 @@ export function AppProvider({ children }) {
         localStorage.setItem('issb-profile', JSON.stringify(next))
         return next
       })
-    }).catch(() => {})
+    }).catch(() => {}).finally(() => {
+      if (profileRequest.current === requestId) setProfileLoading(false)
+    })
   }, [token])
   const updateSettings = (key) => {
     const next = { ...settings, [key]: !settings[key] }
@@ -178,7 +184,7 @@ export function AppProvider({ children }) {
 
   const isAuthenticated = Boolean(isValidToken(token) || readStoredToken())
 
-  return <AppContext.Provider value={{ token, setToken, isAuthenticated, profile, saveProfile, history, addAttempt, refreshHistory, loadMoreHistory, hasMoreHistory: Boolean(nextCursor), historyLoading, historyError, settings, updateSettings, stats }}>{children}</AppContext.Provider>
+  return <AppContext.Provider value={{ token, setToken, isAuthenticated, profile, profileLoading, saveProfile, history, addAttempt, refreshHistory, loadMoreHistory, hasMoreHistory: Boolean(nextCursor), historyLoading, historyError, settings, updateSettings, stats }}>{children}</AppContext.Provider>
 }
 
 export function useApp() {
