@@ -1,4 +1,4 @@
-import { ArrowRight, BarChart3, BookOpen, Dumbbell, History, Home, User } from 'lucide-react'
+import { ArrowRight, BarChart3, BookOpen, Dumbbell, History, Home, ShieldCheck, User } from 'lucide-react'
 import { NavLink, Outlet, useLocation } from 'react-router-dom'
 import { useApp } from '../../state/AppContext'
 
@@ -9,6 +9,7 @@ const navItems = [
   { to: '/history', label: 'History', icon: History },
   { to: '/guide', label: 'Guide', icon: BookOpen },
   { to: '/profile', label: 'Profile', icon: User },
+  { to: '/admin', label: 'Admin', icon: ShieldCheck, adminOnly: true },
 ]
 
 const titles = {
@@ -18,13 +19,13 @@ const titles = {
   '/history': 'Practice history',
   '/guide': 'AI evaluation guide',
   '/profile': 'Profile',
+  '/admin': 'Admin dashboard',
 }
 
 function Navigation({ mobile = false }) {
   // On mobile bottom bar, display primary 5 items to keep touch targets generous
-  const items = mobile
-    ? navItems.filter((item) => item.to !== '/guide')
-    : navItems
+  const { profile } = useApp()
+  const items = navItems.filter((item) => (!item.adminOnly || profile.role === 'admin') && (!mobile || item.to !== '/guide'))
 
   return (
     <nav className={mobile ? 'mobile-nav' : 'side-nav'} aria-label={mobile ? 'Mobile navigation' : 'Main navigation'}>

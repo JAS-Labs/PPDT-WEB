@@ -1,5 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
-import { getAllHistory, historyApi } from '../services/liveApi'
+import { authApi, getAllHistory, historyApi } from '../services/liveApi'
 
 const AppContext = createContext(null)
 
@@ -141,6 +141,29 @@ export function AppProvider({ children }) {
   }, [])
 
   useEffect(() => { refreshHistory() }, [refreshHistory, token])
+
+  // Refresh the locally cached account presentation from the trusted API.
+  // The API still independently authorizes every admin request.
+  useEffect(() => {
+    const requestToken = readStoredToken()
+    if (!requestToken) return
+    authApi.profile().then((user) => {
+      if (readStoredToken() !== requestToken) return
+      setProfile((current) => {
+        const next = {
+          ...current,
+          id: user.id || current.id,
+          name: user.name || current.name,
+          email: user.email || current.email,
+          age: user.age ?? current.age,
+          nationality: user.nationality || current.nationality,
+          role: user.role === 'admin' ? 'admin' : 'candidate',
+        }
+        localStorage.setItem('issb-profile', JSON.stringify(next))
+        return next
+      })
+    }).catch(() => {})
+  }, [token])
   const updateSettings = (key) => {
     const next = { ...settings, [key]: !settings[key] }
     setSettings(next); localStorage.setItem('issb-settings', JSON.stringify(next))

@@ -275,6 +275,19 @@ export const analyticsApi = {
   getPercentile: (score, testType, sampleSize = 1000) => request(`/analytics/percentile?score=${score}&test_type=${testType}&sample_size=${sampleSize}`),
 }
 
+export const adminApi = {
+  overview: () => request('/admin/overview'),
+  users: ({ search = '', role = '', page = 1, limit = 25 } = {}) => {
+    const params = new URLSearchParams({ page: String(page), limit: String(limit) })
+    if (search.trim()) params.set('search', search.trim())
+    if (role) params.set('role', role)
+    return request(`/admin/users?${params.toString()}`)
+  },
+  setUserRole: (userId, role) => request(`/admin/users/${encodeURIComponent(userId)}/role`, {
+    method: 'PATCH', body: JSON.stringify({ role }),
+  }),
+}
+
 export const historyApi = {
   page: async (cursor) => {
     const data = await request(`/history/page?limit=50${cursor ? `&cursor=${encodeURIComponent(cursor)}` : ''}`)

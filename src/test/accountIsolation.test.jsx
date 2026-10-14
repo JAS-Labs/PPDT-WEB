@@ -3,7 +3,11 @@ import { afterEach, expect, it, vi } from 'vitest'
 import { AppProvider, useApp } from '../state/AppContext'
 import { getAllHistory } from '../services/liveApi'
 
-vi.mock('../services/liveApi', () => ({ getAllHistory: vi.fn() }))
+vi.mock('../services/liveApi', () => ({
+  authApi: { profile: vi.fn(async () => ({})) },
+  historyApi: { summary: vi.fn(async () => null), page: vi.fn() },
+  getAllHistory: vi.fn(),
+}))
 
 function HistoryProbe() {
   const { history, refreshHistory } = useApp()

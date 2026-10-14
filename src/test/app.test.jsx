@@ -12,7 +12,7 @@ vi.mock('../services/liveApi', () => ({
     login: vi.fn(async () => ({ access_token: 'live-token', user: { name: 'Test User' } })),
     signup: vi.fn(async () => ({ access_token: 'new-token', user: { name: 'New User' } })),
     logout: vi.fn(async () => ({ success: true })),
-    profile: vi.fn(),
+    profile: vi.fn(async () => ({})),
   },
   practiceApi: {
     getPpdtImage: vi.fn(async () => ({ id: 'ppdt-live-1', url: '/live-ppdt.jpg', difficulty_level: 'medium' })),

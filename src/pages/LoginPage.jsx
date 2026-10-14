@@ -191,10 +191,12 @@ export default function LoginPage({ initialMode }) {
       }
 
       saveProfile({
+        id: result.user?.id,
         name: result.user?.name || (mode === 'signup' ? form.name.trim() : '') || email.split('@')[0],
         email: result.user?.email || email,
         age: result.user?.age ?? (form.age ? parseInt(form.age, 10) : undefined),
         nationality: result.user?.nationality || form.nationality.trim() || 'Bangladeshi',
+        role: result.user?.role || 'candidate',
         verified: true,
         mode: 'account',
       })

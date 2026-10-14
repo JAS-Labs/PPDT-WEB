@@ -12,12 +12,21 @@ import LandingPage from './pages/LandingPage'
 import WebMCPBridge from './components/WebMCPBridge'
 import ConnectionNotice from './components/ConnectionNotice'
 import PasswordResetPage from './pages/PasswordResetPage'
+import AdminPage from './pages/AdminPage'
 import { useApp } from './state/AppContext'
 
 function RequireAuth({ children }) {
   const { isAuthenticated } = useApp()
   const location = useLocation()
   return isAuthenticated ? children : <Navigate to="/login" replace state={{ from: location.pathname }} />
+}
+
+function RequireAdmin({ children }) {
+  const { profile } = useApp()
+  const location = useLocation()
+  return profile.role === 'admin'
+    ? children
+    : <Navigate to="/" replace state={{ from: location.pathname }} />
 }
 
 export default function App() {
@@ -44,6 +53,7 @@ export default function App() {
           <Route path="history" element={<HistoryPage />} />
           <Route path="guide" element={<GuidePage />} />
           <Route path="profile" element={<ProfilePage />} />
+          <Route path="admin" element={<RequireAdmin><AdminPage /></RequireAdmin>} />
         </Route>
 
         <Route path="*" element={<Navigate to="/" replace />} />
