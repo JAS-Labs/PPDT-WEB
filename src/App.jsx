@@ -13,6 +13,10 @@ import WebMCPBridge from './components/WebMCPBridge'
 import ConnectionNotice from './components/ConnectionNotice'
 import PasswordResetPage from './pages/PasswordResetPage'
 import AdminPage from './pages/AdminPage'
+import AdminResponsesPage from './pages/AdminResponsesPage'
+import AdminUsersPage from './pages/AdminUsersPage'
+import AdminActivityPage from './pages/AdminActivityPage'
+import AdminShell from './components/admin/AdminShell'
 import { useApp } from './state/AppContext'
 
 function RequireAuth({ children }) {
@@ -22,8 +26,9 @@ function RequireAuth({ children }) {
 }
 
 function RequireAdmin({ children }) {
-  const { profile } = useApp()
+  const { profile, profileLoading } = useApp()
   const location = useLocation()
+  if (profileLoading) return <div className="admin-access-loading" role="status">Checking administrator access…</div>
   return profile.role === 'admin'
     ? children
     : <Navigate to="/" replace state={{ from: location.pathname }} />
@@ -42,6 +47,13 @@ export default function App() {
         <Route path="/signup" element={<LoginPage initialMode="signup" />} />
         <Route path="/reset-password" element={<PasswordResetPage />} />
 
+        <Route path="/admin" element={<RequireAuth><RequireAdmin><AdminShell /></RequireAdmin></RequireAuth>}>
+          <Route index element={<AdminPage />} />
+          <Route path="responses" element={<AdminResponsesPage />} />
+          <Route path="users" element={<AdminUsersPage />} />
+          <Route path="activity" element={<AdminActivityPage />} />
+        </Route>
+
         {/* Unauthenticated visitors see the Landing Page at root */}
         {!isAuthenticated && <Route path="/" element={<LandingPage />} />}
 
@@ -53,7 +65,6 @@ export default function App() {
           <Route path="history" element={<HistoryPage />} />
           <Route path="guide" element={<GuidePage />} />
           <Route path="profile" element={<ProfilePage />} />
-          <Route path="admin" element={<RequireAdmin><AdminPage /></RequireAdmin>} />
         </Route>
 
         <Route path="*" element={<Navigate to="/" replace />} />

@@ -25,12 +25,24 @@ const titles = {
 function Navigation({ mobile = false }) {
   // On mobile bottom bar, display primary 5 items to keep touch targets generous
   const { profile } = useApp()
+  const location = useLocation()
   const items = navItems.filter((item) => (!item.adminOnly || profile.role === 'admin') && (!mobile || item.to !== '/guide'))
 
   return (
     <nav className={mobile ? 'mobile-nav' : 'side-nav'} aria-label={mobile ? 'Mobile navigation' : 'Main navigation'}>
       {items.map(({ to, label, icon: Icon }) => (
-        <NavLink
+        to === '/admin' ? <a
+          key={to}
+          href={to}
+          target="_blank"
+          rel="noopener noreferrer"
+          aria-label={`${label} — opens in a new tab`}
+          title="Open the separate administrator workspace"
+          className={`nav-link ${location.pathname.startsWith(to) ? 'active' : ''}`}
+        >
+          <Icon aria-hidden="true" size={20} />
+          <span>{label}</span>
+        </a> : <NavLink
           key={to}
           to={to}
           aria-label={label}
