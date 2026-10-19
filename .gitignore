@@ -3,8 +3,7 @@ dist/
 public/__ui_review/
 .sites-runtime/
 *.log
-.env
-.env.local
 branch_structure.json
 temp_auto_push.bat
 temp_interactive_push.bat
+config.bat
