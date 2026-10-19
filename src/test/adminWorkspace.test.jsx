@@ -18,7 +18,7 @@ vi.mock('../services/liveApi', () => ({
     setUserRole: vi.fn(async (_id, role) => ({ role })),
     sendPasswordReset: vi.fn(async () => ({ success: true })),
     responses: vi.fn(async () => ({ items: [{ session_id: 'attempt-1', test_type: 'wat', candidate_ref: 'abc123def0', created_at: '2026-10-10T00:00:00Z', score: 0, response_count: 1 }], total: 1, page: 1, pages: 1 })),
-    response: vi.fn(async () => ({ session_id: 'attempt-1', test_type: 'wat', candidate_ref: 'abc123def0', created_at: '2026-10-10T00:00:00Z', score: 0, payload: { responses: [{ word: 'Teamwork', response: 'I support my team.', response_time_ms: 4500 }] } })),
+    response: vi.fn(async () => ({ session_id: 'attempt-1', test_type: 'wat', candidate_ref: 'abc123def0', candidate_name: 'Saifur Rahman', created_at: '2026-10-10T00:00:00Z', score: 0, payload: { responses: [{ word: 'Teamwork', response: 'I support my team.', response_time_ms: 4500 }] } })),
     activity: vi.fn(async () => ({ items: [{ id: 'event-1', action: 'response_detail_view', actor_name: 'Admin', target_name: null, created_at: '2026-10-10T00:00:00Z', metadata: { test_type: 'wat' } }] })),
   },
 }))
@@ -46,7 +46,31 @@ it('shows answer text only after opening a pseudonymous test response', async ()
   fireEvent.click(screen.getByRole('button', { name: /Review/i }))
   await waitFor(() => expect(screen.getByText('I support my team.')).toBeInTheDocument())
   expect(within(screen.getByRole('dialog')).getByText('0.0 / 10')).toBeInTheDocument()
+  expect(within(screen.getByRole('dialog')).getByText(/Candidate: Saifur Rahman/)).toBeInTheDocument()
   expect(adminApi.response).toHaveBeenCalledWith('wat', 'attempt-1')
+})
+
+it('filters response attempts by the selected test', async () => {
+  renderAdmin('/admin/responses', <AdminResponsesPage />)
+  await waitFor(() => expect(screen.getByText('abc123def0')).toBeInTheDocument())
+
+  fireEvent.change(screen.getByRole('combobox', { name: 'Filter responses by test' }), { target: { value: 'ppdt' } })
+
+  await waitFor(() => expect(adminApi.responses).toHaveBeenLastCalledWith(expect.objectContaining({ testType: 'ppdt' })))
+})
+
+it('shows the original prompt picture when reviewing an image-based response', async () => {
+  adminApi.response.mockResolvedValueOnce({
+    test_type: 'ppdt', session_id: 'attempt-1', created_at: '2026-10-10T00:00:00Z', score: 7,
+    candidate_ref: 'abc123def0', candidate_name: 'Saifur Rahman', payload: { image_id: 'ppdt-image-1', image_url: 'https://images.example/ppdt-image-1.jpg', story_text: 'A sample story.' },
+  })
+  renderAdmin('/admin/responses', <AdminResponsesPage />)
+  await waitFor(() => expect(screen.getByText('abc123def0')).toBeInTheDocument())
+  fireEvent.click(screen.getByRole('button', { name: /Review/i }))
+
+  const prompt = await screen.findByRole('img', { name: 'PPDT prompt image' })
+  expect(prompt).toHaveAttribute('src', 'https://images.example/ppdt-image-1.jpg')
+  expect(screen.getByText('Original PPDT picture')).toBeInTheDocument()
 })
 
 it('renders assessment feedback clearly and keeps the original JSON downloadable', async () => {
