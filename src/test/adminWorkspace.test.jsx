@@ -17,7 +17,7 @@ vi.mock('../services/liveApi', () => ({
     updateUserProfile: vi.fn(async (_id, value) => ({ ...value, id: 'candidate-1' })),
     setUserRole: vi.fn(async (_id, role) => ({ role })),
     sendPasswordReset: vi.fn(async () => ({ success: true })),
-    responses: vi.fn(async () => ({ items: [{ session_id: 'attempt-1', test_type: 'wat', candidate_ref: 'abc123def0', created_at: '2026-10-10T00:00:00Z', score: 0, response_count: 1 }], total: 1, page: 1, pages: 1 })),
+    responses: vi.fn(async () => ({ items: [{ session_id: 'attempt-1', test_type: 'wat', candidate_ref: 'abc123def0', candidate_name: 'Saifur Rahman', created_at: '2026-10-10T00:00:00Z', score: 0, response_count: 1 }], total: 1, page: 1, pages: 1 })),
     response: vi.fn(async () => ({ session_id: 'attempt-1', test_type: 'wat', candidate_ref: 'abc123def0', candidate_name: 'Saifur Rahman', created_at: '2026-10-10T00:00:00Z', score: 0, payload: { responses: [{ word: 'Teamwork', response: 'I support my team.', response_time_ms: 4500 }] } })),
     activity: vi.fn(async () => ({ items: [{ id: 'event-1', action: 'response_detail_view', actor_name: 'Admin', target_name: null, created_at: '2026-10-10T00:00:00Z', metadata: { test_type: 'wat' } }] })),
   },
@@ -42,6 +42,8 @@ it('renders a separate admin workspace and platform overview', async () => {
 it('shows answer text only after opening a pseudonymous test response', async () => {
   renderAdmin('/admin/responses', <AdminResponsesPage />)
   await waitFor(() => expect(screen.getByText('abc123def0')).toBeInTheDocument())
+  const candidateRow = screen.getByText('Saifur Rahman').closest('tr')
+  expect(within(candidateRow).getByText('abc123def0')).toBeInTheDocument()
   expect(screen.queryByText('I support my team.')).not.toBeInTheDocument()
   fireEvent.click(screen.getByRole('button', { name: /Review/i }))
   await waitFor(() => expect(screen.getByText('I support my team.')).toBeInTheDocument())
