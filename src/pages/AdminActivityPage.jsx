@@ -18,7 +18,7 @@ export default function AdminActivityPage() {
   }
   useEffect(() => { load() }, [])
   return <section className="admin-page" aria-labelledby="admin-activity-title">
-    <div className="admin-heading-row"><div><p className="admin-eyebrow"><Activity size={15} /> AUDIT TRAIL</p><h1 id="admin-activity-title">Admin activity</h1><p className="admin-subtitle">Review profile edits, role changes, and access to individual responses.</p></div><button className="admin-secondary-button" onClick={load} disabled={loading}><RefreshCw size={15} className={loading ? 'admin-spinning' : ''} /> Refresh</button></div>
+    <div className="admin-heading-row"><div><p className="admin-eyebrow"><Activity size={15} /> AUDIT TRAIL</p><h1 id="admin-activity-title">Admin activity</h1><p className="admin-subtitle">Review profile edits, role changes, password reset requests, and access to individual responses.</p></div><button className="admin-secondary-button" onClick={load} disabled={loading}><RefreshCw size={15} className={loading ? 'admin-spinning' : ''} /> Refresh</button></div>
     {error && <div className="admin-alert" role="alert">{error}</div>}
     <section className="admin-surface admin-audit-panel"><div className="admin-audit-heading"><strong>Recent events</strong><small>Up to 100 most recent events · response text is never copied into this log</small></div><div className="admin-audit-list">
       {loading && !items.length && <p className="admin-empty">Loading administrator activity…</p>}

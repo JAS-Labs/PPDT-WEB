@@ -16,6 +16,7 @@ vi.mock('../services/liveApi', () => ({
     userProfile: vi.fn(async () => ({ id: 'candidate-1', name: 'Candidate One', email: 'candidate@example.com', age: 22, nationality: 'Bangladeshi', role: 'candidate', research_consent: true, research_consent_at: '2026-10-01T00:00:00Z', tests: { wat: { attempts: 2, average_score: 6.5, last_attempt_at: '2026-10-10T00:00:00Z' } } })),
     updateUserProfile: vi.fn(async (_id, value) => ({ ...value, id: 'candidate-1' })),
     setUserRole: vi.fn(async (_id, role) => ({ role })),
+    sendPasswordReset: vi.fn(async () => ({ success: true })),
     responses: vi.fn(async () => ({ items: [{ session_id: 'attempt-1', test_type: 'wat', candidate_ref: 'abc123def0', created_at: '2026-10-10T00:00:00Z', score: 0, response_count: 1 }], total: 1, page: 1, pages: 1 })),
     response: vi.fn(async () => ({ session_id: 'attempt-1', test_type: 'wat', candidate_ref: 'abc123def0', created_at: '2026-10-10T00:00:00Z', score: 0, payload: { responses: [{ word: 'Teamwork', response: 'I support my team.', response_time_ms: 4500 }] } })),
     activity: vi.fn(async () => ({ items: [{ id: 'event-1', action: 'response_detail_view', actor_name: 'Admin', target_name: null, created_at: '2026-10-10T00:00:00Z', metadata: { test_type: 'wat' } }] })),
@@ -57,6 +58,21 @@ it('shows consent status read-only while presenting profile and per-test progres
   expect(within(dialog).getByText('Granted')).toBeInTheDocument()
   expect(within(dialog).getByText('6.5 avg score')).toBeInTheDocument()
   expect(within(dialog).getByText(/Consent must never be changed/)).toBeInTheDocument()
+})
+
+it('confirms and requests a password reset email without exposing a new password', async () => {
+  const confirm = vi.spyOn(window, 'confirm').mockReturnValue(true)
+  renderAdmin('/admin/users', <AdminUsersPage />)
+  await waitFor(() => expect(screen.getByText('Candidate One')).toBeInTheDocument())
+  fireEvent.click(screen.getByRole('button', { name: /View profile/i }))
+  await waitFor(() => expect(screen.getByRole('button', { name: 'Send reset email' })).toBeInTheDocument())
+
+  fireEvent.click(screen.getByRole('button', { name: 'Send reset email' }))
+
+  await waitFor(() => expect(adminApi.sendPasswordReset).toHaveBeenCalledWith('candidate-1'))
+  expect(confirm).toHaveBeenCalledWith(expect.stringContaining('candidate@example.com'))
+  expect(screen.getByRole('status')).toHaveTextContent('Password reset email requested')
+  confirm.mockRestore()
 })
 
 it('renders administrator access history', async () => {

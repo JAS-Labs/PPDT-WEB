@@ -22,6 +22,7 @@ export default function AdminUsersPage() {
   const [detailLoading, setDetailLoading] = useState(false)
   const [form, setForm] = useState({ name: '', age: '', nationality: '' })
   const [saving, setSaving] = useState(false)
+  const [resettingPassword, setResettingPassword] = useState(false)
   const [roleDraft, setRoleDraft] = useState('')
 
   useEffect(() => {
@@ -79,6 +80,17 @@ export default function AdminUsersPage() {
     finally { setSaving(false) }
   }
 
+  async function sendPasswordReset() {
+    if (!selected || !detail?.email) return
+    if (!window.confirm(`Send a password reset email to ${detail.email}? The user will choose their own new password.`)) return
+    setResettingPassword(true); setError(''); setNotice('')
+    try {
+      await adminApi.sendPasswordReset(selected.id)
+      setNotice(`Password reset email requested for ${detail.email}.`)
+    } catch (resetError) { setError(resetError.message || 'The password reset email could not be requested.') }
+    finally { setResettingPassword(false) }
+  }
+
   return <section className="admin-page" aria-labelledby="admin-users-title">
     <div className="admin-heading-row"><div><p className="admin-eyebrow"><UserRound size={15} /> ACCOUNTS</p><h1 id="admin-users-title">User profiles</h1><p className="admin-subtitle">Review account details and progress; edit only basic profile fields.</p></div></div>
     {error && !selected && <div className="admin-alert" role="alert">{error}</div>}
@@ -101,6 +113,7 @@ export default function AdminUsersPage() {
           <section className="admin-profile-stats"><h3>Practice by test</h3><div>{Object.entries(detail.tests || {}).length ? Object.entries(detail.tests).map(([test, stats]) => <article key={test}><strong>{TEST_LABELS[test] || test.toUpperCase()}</strong><span>{stats.attempts} attempts</span><span>{stats.average_score == null ? 'No scored attempts' : `${Number(stats.average_score).toFixed(1)} avg score`}</span><small>Last attempt {fmtDate(stats.last_attempt_at)}</small></article>) : <p className="admin-empty">No practice attempts yet.</p>}</div></section>
           <form className="admin-profile-form" onSubmit={saveProfile}><h3>Edit profile</h3><label>Name<input maxLength="120" required value={form.name} onChange={(event) => setForm({ ...form, name: event.target.value })} /></label><div><label>Age<input type="number" min="13" max="100" value={form.age} onChange={(event) => setForm({ ...form, age: event.target.value })} /></label><label>Nationality<input maxLength="100" value={form.nationality} onChange={(event) => setForm({ ...form, nationality: event.target.value })} /></label></div><p>Email and research consent are read-only here. Consent must never be changed by an administrator.</p><button className="admin-primary-button" disabled={saving}>{saving ? 'Saving…' : 'Save profile'}</button></form>
           <section className="admin-profile-form admin-role-form"><h3>Access role</h3><div><select aria-label="Account access role" value={roleDraft} onChange={(event) => setRoleDraft(event.target.value)} disabled={detail.id === currentProfile.id}><option value="candidate">Candidate</option><option value="admin">Administrator</option></select><button className="admin-secondary-button" onClick={saveRole} disabled={saving || roleDraft === detail.role || detail.id === currentProfile.id}>Update role</button></div><small>Role changes are audited. The API prevents self-promotion and removing the last administrator.</small></section>
+          <section className="admin-profile-form admin-role-form"><h3>Password reset</h3><div><span className="admin-reset-explainer">Sends a secure recovery email. The user sets their own password.</span><button className="admin-secondary-button" onClick={sendPasswordReset} disabled={resettingPassword || !detail.email}>{resettingPassword ? 'Sending…' : 'Send reset email'}</button></div><small>Requests are recorded in the administrator activity log. Reset links follow the app’s configured recovery flow.</small></section>
         </>}
       </aside>
     </div>}

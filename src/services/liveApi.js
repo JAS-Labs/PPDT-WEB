@@ -290,6 +290,9 @@ export const adminApi = {
   updateUserProfile: (userId, profile) => request(`/admin/users/${encodeURIComponent(userId)}/profile`, {
     method: 'PATCH', body: JSON.stringify(profile),
   }),
+  sendPasswordReset: (userId) => request(`/admin/users/${encodeURIComponent(userId)}/password-reset`, {
+    method: 'POST',
+  }),
   responses: ({ testType = '', dateFrom = '', dateTo = '', page = 1, limit = 25 } = {}) => {
     const params = new URLSearchParams({ page: String(page), limit: String(limit) })
     if (testType) params.set('test_type', testType)
