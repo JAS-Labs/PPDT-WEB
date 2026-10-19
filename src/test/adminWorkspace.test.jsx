@@ -29,7 +29,7 @@ function renderAdmin(path, page) {
   </Route></Routes></AppProvider></MemoryRouter>)
 }
 
-afterEach(() => { cleanup(); localStorage.clear(); vi.clearAllMocks() })
+afterEach(() => { cleanup(); localStorage.clear(); vi.clearAllMocks(); vi.restoreAllMocks(); vi.unstubAllGlobals() })
 
 it('renders a separate admin workspace and platform overview', async () => {
   renderAdmin('/admin', <AdminPage />)
@@ -47,6 +47,45 @@ it('shows answer text only after opening a pseudonymous test response', async ()
   await waitFor(() => expect(screen.getByText('I support my team.')).toBeInTheDocument())
   expect(within(screen.getByRole('dialog')).getByText('0.0 / 10')).toBeInTheDocument()
   expect(adminApi.response).toHaveBeenCalledWith('wat', 'attempt-1')
+})
+
+it('renders assessment feedback clearly and keeps the original JSON downloadable', async () => {
+  const feedback = {
+    overall_score: 7.8,
+    composite_score: 7.4,
+    assessor_confidence: 'high',
+    personality_assessment: 'Shows a constructive and steady approach to the prompt.',
+    positive_traits: ['Team orientation', 'Calm under pressure'],
+    areas_of_concern: ['Add more detail to the next step'],
+    recommendation: 'Make the outcome more specific and measurable.',
+    emotional_stability: 'Maintains a composed tone.',
+    olq_scores: { LDR: { score: 8.1, evidence: 'Organized others around the task.', confidence: 'high' } },
+  }
+  adminApi.response.mockResolvedValueOnce({
+    test_type: 'wat', session_id: 'attempt-1', created_at: '2026-10-10T00:00:00Z', score: 7.8,
+    candidate_ref: 'abc123def0', payload: { responses: [], feedback },
+  })
+  const createObjectURL = vi.fn(() => 'blob:feedback')
+  const revokeObjectURL = vi.fn()
+  vi.stubGlobal('URL', { createObjectURL, revokeObjectURL })
+  const click = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {})
+
+  renderAdmin('/admin/responses', <AdminResponsesPage />)
+  await waitFor(() => expect(screen.getByText('abc123def0')).toBeInTheDocument())
+  fireEvent.click(screen.getByRole('button', { name: /Review/i }))
+
+  const dialog = await screen.findByRole('dialog')
+  expect(within(dialog).getByRole('heading', { name: 'Assessment feedback' })).toBeInTheDocument()
+  expect(within(dialog).getByText('Shows a constructive and steady approach to the prompt.')).toBeInTheDocument()
+  expect(within(dialog).getByText('Team orientation')).toBeInTheDocument()
+  expect(within(dialog).getByText('Leadership')).toBeInTheDocument()
+  expect(within(dialog).getByText('Make the outcome more specific and measurable.')).toBeInTheDocument()
+
+  fireEvent.click(within(dialog).getByRole('button', { name: 'Download JSON' }))
+  expect(createObjectURL).toHaveBeenCalledWith(expect.any(Blob))
+  expect(click).toHaveBeenCalledOnce()
+  const downloadedBlob = createObjectURL.mock.calls[0][0]
+  expect(await downloadedBlob.text()).toContain('"overall_score": 7.8')
 })
 
 it('shows consent status read-only while presenting profile and per-test progress', async () => {
