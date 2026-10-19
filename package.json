@@ -4,9 +4,9 @@
   "version": "1.0.0",
   "type": "module",
   "scripts": {
-    "dev": "node api.js && vite --host 0.0.0.0",
-    "build": "node api.js && vite build",
-    "build:site": "node scripts/build-site.mjs",
+    "dev": "node init && vite --host 0.0.0.0",
+    "build": "node init && vite build",
+    "build:site": "node init && node scripts/build-site.mjs",
     "preview": "vite preview --host 0.0.0.0",
     "test": "vitest run",
     "install:ci": "npm ci"
