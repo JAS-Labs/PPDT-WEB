@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "node api.js && vite --host 0.0.0.0",
     "build": "node api.js && vite build",
-    "build:site": "node scripts/build-site.mjs",
+    "build:site": "node api.js && node scripts/build-site.mjs",
     "preview": "vite preview --host 0.0.0.0",
     "test": "vitest run",
     "install:ci": "npm ci"
